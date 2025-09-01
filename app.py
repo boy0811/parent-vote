@@ -1,4 +1,3 @@
-# app.py
 import os
 import sys
 import logging
@@ -68,9 +67,21 @@ db_url = os.getenv("DATABASE_URL", default_sqlite)
 # Render / Heroku 給的會是 postgres://，要轉成 postgresql+psycopg:// (psycopg3)
 if db_url.startswith("postgres://"):
     db_url = db_url.replace("postgres://", "postgresql+psycopg://", 1)
+elif db_url.startswith("postgresql://") and not db_url.startswith("postgresql+psycopg://"):
+    db_url = db_url.replace("postgresql://", "postgresql+psycopg://", 1)
+
+# 移除 Neon 給的 channel_binding 參數，避免 psycopg 斷線
+if "channel_binding" in db_url:
+    db_url = db_url.replace("&channel_binding=require", "")
 
 app.config['SQLALCHEMY_DATABASE_URI'] = db_url
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+# ✅ 加上防 idle 斷線設定
+app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+    "pool_pre_ping": True,
+    "pool_recycle": 1800,  # 30 分鐘 recycle 連線
+}
 
 db.init_app(app)
 migrate = Migrate(app, db)
