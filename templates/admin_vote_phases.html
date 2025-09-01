@@ -1,0 +1,84 @@
+{% extends "layout.html" %}
+{% block title %}投票階段管理{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      {% for category, message in messages %}
+        <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+          {{ message }}
+          <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+      {% endfor %}
+    {% endif %}
+  {% endwith %}
+
+  <div class="text-center mb-4">
+    <h2>🛠️ 投票階段管理</h2>
+  </div>
+
+  <!-- 返回主控台 -->
+  <div class="mb-3 d-flex flex-wrap gap-2">
+    <a href="{{ url_for('admin_dashboard.admin_dashboard') }}" class="btn btn-outline-secondary">⬅️ 返回主控台</a>
+
+    <!-- 全部關閉按鈕 -->
+    <form action="{{ url_for('admin_votes.close_all_phases') }}" method="post">
+      <button type="submit" class="btn btn-outline-danger"
+              onclick="return confirm('確定要關閉所有階段？')">🚫 全部關閉</button>
+    </form>
+
+    <!-- 一鍵重設階段 -->
+    <form action="{{ url_for('admin_votes.reset_vote_phases') }}" method="post">
+      <button type="submit" class="btn btn-outline-warning"
+              onclick="return confirm('⚠️ 將刪除所有階段並重建預設三階段，確定執行？')">🧹 一鍵重設階段</button>
+    </form>
+  </div>
+
+  <!-- 階段列表 -->
+  <table class="table table-bordered text-center">
+    <thead class="table-light">
+      <tr>
+        <th>階段名稱</th>
+        <th>每人可投票數</th>
+        <th>晉級人數</th>
+        <th>是否開啟</th>
+        <th>階段開關</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for phase in phases %}
+      <tr>
+        <td>{{ phase.name }}</td>
+        <td>{{ phase.max_votes }}</td>
+        <td>{{ phase.promote_count }}</td>
+        <td>
+          {% if phase.is_open %}
+            <span class="badge bg-success">開啟中</span>
+          {% else %}
+            <span class="badge bg-secondary">已關閉</span>
+          {% endif %}
+        </td>
+        <td>
+          {% if phase.is_open %}
+          <!-- 關閉階段 -->
+          <form action="{{ url_for('admin_votes.close_phase') }}" method="post" style="display:inline;">
+            <input type="hidden" name="phase_id" value="{{ phase.id }}">
+            <button type="submit" class="btn btn-danger btn-sm"
+                    onclick="return confirm('確定要關閉「{{ phase.name }}」階段？')">關閉</button>
+          </form>
+          {% else %}
+          <!-- 開啟階段 -->
+          <form action="{{ url_for('admin_votes.open_phase', phase_id=phase.id) }}" method="post" style="display:inline;">
+            <button type="submit" class="btn btn-success btn-sm"
+                    onclick="return confirm('確定要開啟「{{ phase.name }}」階段？其他階段將會自動關閉')">開啟</button>
+          </form>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+</div>
+{% endblock %}

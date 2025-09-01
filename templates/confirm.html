@@ -1,0 +1,31 @@
+{% extends "layout.html" %}
+{% block title %}候選人資料確認{% endblock %}
+
+{% block content %}
+<div class="container mt-5" style="max-width: 480px;">
+  <h2 class="text-center mb-4">📋 請補充候選人資料</h2>
+
+  <form method="POST" action="{{ url_for('auth.confirm_candidate') }}">
+    {% if not candidate.name %}
+    <div class="mb-3">
+      <label for="name" class="form-label">候選人姓名</label>
+      <input type="text" class="form-control" name="name" id="name" required value="">
+    </div>
+    {% endif %}
+
+    <div class="mb-3">
+      <label for="class_name" class="form-label">班級</label>
+      <input type="text" class="form-control" name="class_name" id="class_name" required
+             value="{{ candidate.class_name or '' }}">
+    </div>
+
+    <div class="mb-3">
+      <label for="parent_name" class="form-label">家長姓名</label>
+      <input type="text" class="form-control" name="parent_name" id="parent_name" required
+             value="{{ candidate.parent_name or '' }}">
+    </div>
+
+    <button type="submit" class="btn btn-success w-100">確認並前往投票</button>
+  </form>
+</div>
+{% endblock %}

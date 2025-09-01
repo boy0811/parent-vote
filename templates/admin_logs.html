@@ -1,0 +1,116 @@
+{% extends "layout.html" %}
+{% block title %}操作紀錄{% endblock %}
+
+{% block head_extra %}
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap5.min.css">
+<link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.2/css/buttons.bootstrap5.min.css">
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+  <h2 class="mb-3">📝 系統操作紀錄</h2>
+
+  <form id="filterForm" class="row g-2 mb-3">
+    <div class="col-auto">
+      <select class="form-select" name="user_type">
+        <option value="">全部類型</option>
+        <option value="admin" {{ 'selected' if user_type == 'admin' else '' }}>admin</option>
+        <option value="candidate" {{ 'selected' if user_type == 'candidate' else '' }}>candidate</option>
+        <option value="staff" {{ 'selected' if user_type == 'staff' else '' }}>staff</option>
+      </select>
+    </div>
+    <div class="col-auto">
+      <input type="text" class="form-control" name="keyword" placeholder="關鍵字（操作內容/IP）" value="{{ keyword }}">
+    </div>
+    <div class="col-auto">
+      <input type="date" class="form-control" name="date_from" value="{{ date_from }}">
+    </div>
+    <div class="col-auto">
+      <input type="date" class="form-control" name="date_to" value="{{ date_to }}">
+    </div>
+    <div class="col-auto">
+      <button class="btn btn-primary" type="submit">查詢</button>
+      <button class="btn btn-secondary" id="btnReset" type="button">重置</button>
+      <a class="btn btn-success" href="{{ url_for('admin_logs.export_logs_csv') }}">匯出 CSV（後端）</a>
+    </div>
+  </form>
+
+  <div class="table-responsive">
+    <table id="logsTable" class="table table-bordered table-striped table-sm align-middle w-100">
+      <thead class="table-dark">
+        <tr>
+          <th>時間</th>
+          <th>使用者類型</th>
+          <th>使用者ID</th>
+          <th>操作</th>
+          <th>IP</th>
+        </tr>
+      </thead>
+      <tbody></tbody> <!-- server-side 由 JS 填充 -->
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.8/js/dataTables.bootstrap5.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.4.2/js/dataTables.buttons.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.bootstrap5.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.html5.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.print.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.colVis.min.js"></script>
+
+<script>
+$(function () {
+  const table = $('#logsTable').DataTable({
+    serverSide: true,
+    processing: true,
+    ajax: {
+      url: "{{ url_for('admin_logs.logs_data') }}",
+      data: function (d) {
+        // 把自訂的篩選參數一起送到後端
+        const form = $('#filterForm').serializeArray();
+        form.forEach(({name, value}) => d[name] = value);
+      }
+    },
+    order: [[0, 'desc']],
+    pageLength: 25,
+    lengthMenu: [10, 25, 50, 100],
+    columns: [
+      { title: "時間" },
+      { title: "使用者類型" },
+      { title: "使用者ID" },
+      { title: "操作" },
+      { title: "IP" }
+    ],
+    dom: 'Bfrtip',
+    buttons: [
+      { extend: 'csv', text: '前端 CSV', title: 'operation_logs' },
+      { extend: 'excel', text: 'Excel', title: 'operation_logs' },
+      { extend: 'print', text: '列印' },
+      { extend: 'colvis', text: '欄位顯示' }
+    ],
+    language: {
+      url: 'https://cdn.datatables.net/plug-ins/1.13.8/i18n/zh-HANT.json'
+    }
+  });
+
+  // 篩選表單提交時，阻止重整，改成重載 DataTables
+  $('#filterForm').on('submit', function (e) {
+    e.preventDefault();
+    table.ajax.reload();
+  });
+
+  // 重置按鈕
+  $('#btnReset').on('click', function () {
+    $('#filterForm')[0].reset();
+    table.ajax.reload();
+  });
+});
+</script>
+{% endblock %}

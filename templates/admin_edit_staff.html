@@ -1,0 +1,49 @@
+{% extends "layout.html" %}
+{% block title %}{{ '編輯' if staff else '新增' }}教職員{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+  <div class="card shadow-sm mx-auto" style="max-width: 600px; border-radius: 1rem;">
+    <div class="card-header bg-primary text-white text-center" style="border-radius: 1rem 1rem 0 0;">
+      <h4 class="mb-0">{{ '✏️ 編輯' if staff else '➕ 新增' }}教職員</h4>
+    </div>
+    <div class="card-body p-4">
+      <form method="POST">
+        <!-- 帳號 -->
+        <div class="mb-3">
+          <label for="username" class="form-label fw-bold">帳號</label>
+          <input type="text" class="form-control" id="username" name="username"
+                 value="{{ staff.username if staff else '' }}" required>
+        </div>
+        <!-- 密碼 -->
+        <div class="mb-3">
+          <label for="password" class="form-label fw-bold">密碼</label>
+          <input type="text" class="form-control" id="password" name="password"
+                 placeholder="{{ '（保留原密碼）' if staff else '' }}">
+        </div>
+        <!-- 班級 -->
+        <div class="mb-3">
+          <label for="class_name" class="form-label fw-bold">班級</label>
+          <input type="text" class="form-control" id="class_name" name="class_name"
+                 value="{{ staff.class_name if staff else '' }}">
+        </div>
+        <!-- 姓名 -->
+        <div class="mb-3">
+          <label for="name" class="form-label fw-bold">姓名</label>
+          <input type="text" class="form-control" id="name" name="name"
+                 value="{{ staff.name if staff else '' }}">
+        </div>
+
+        <div class="d-flex justify-content-between">
+          <button type="submit" class="btn btn-success px-4">
+            💾 儲存
+          </button>
+          <a href="{{ url_for('staff.admin_staffs') }}" class="btn btn-secondary px-4">
+            ← 取消
+          </a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,45 @@
+{% extends "layout.html" %}
+{% block title %}匯入教職員名單{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+  <div class="card shadow-sm mx-auto" style="max-width: 700px; border-radius: 1rem;">
+    <div class="card-header bg-primary text-white text-center" style="border-radius: 1rem 1rem 0 0;">
+      <h4 class="mb-0">📥 匯入教職員名單</h4>
+    </div>
+
+    <div class="card-body p-4">
+
+      {% if error %}
+        <div class="alert alert-danger mb-3">{{ error }}</div>
+      {% endif %}
+      {% if success %}
+        <div class="alert alert-success mb-3">{{ success }}</div>
+      {% endif %}
+
+      <form action="{{ url_for('staff.import_staffs') }}" method="post" enctype="multipart/form-data">
+        <div class="mb-3">
+          <label for="file" class="form-label fw-bold">請選擇 Excel 檔案（.xlsx）</label>
+          <input type="file" class="form-control" id="file" name="file" accept=".xlsx" required>
+        </div>
+
+        <button type="submit" class="btn btn-primary w-100 mb-2">🚀 開始匯入</button>
+        <a href="{{ url_for('staff.admin_staffs') }}" class="btn btn-outline-secondary w-100 mb-4">📄 返回教職員列表</a>
+      </form>
+
+      <div class="p-3 bg-light border rounded">
+        <h6 class="fw-bold mb-2">📄 範例格式：</h6>
+        <p class="mb-2">請確認您的 Excel 檔案包含以下欄位：</p>
+        <ul class="mb-3">
+          <li><strong>帳號</strong>（username / 帳號）</li>
+          <li><strong>密碼</strong>（password / 密碼）</li>
+          <li><strong>姓名</strong>（name / 姓名）</li>
+          <li><strong>班級</strong>（class_name / 班級）</li>
+        </ul>
+        <a href="{{ url_for('staff.download_sample_staffs') }}" class="btn btn-outline-info w-100">⬇️ 下載範例檔</a>
+      </div>
+
+    </div>
+  </div>
+</div>
+{% endblock %}

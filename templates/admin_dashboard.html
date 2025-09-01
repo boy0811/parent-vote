@@ -1,0 +1,73 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="container mt-5">
+  <h1 class="mb-5 text-center">管理員主控台</h1>
+
+  <div class="row g-4">
+
+    <!-- 🧭 候選人管理 -->
+    <div class="col-lg-6 col-md-12">
+      <div class="card h-100 shadow-sm rounded-4" style="background-color: #e7f1fb;">
+        <div class="card-body text-center">
+          <h5 class="card-title mb-3">🧭 候選人管理</h5>
+          <a href="{{ url_for('admin_candidates.admin_candidate_list') }}" class="btn btn-outline-primary rounded-pill w-100 mb-2">📋 候選人名單管理</a>
+          <a href="{{ url_for('checkin_panel.panel') }}" class="btn btn-primary w-100">📋 進入進階簽到面板</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- 🗳️ 投票監控與票數處理 -->
+    <div class="col-lg-6 col-md-12">
+      <div class="card h-100 shadow-sm rounded-4" style="background-color: #eaf7ea;">
+        <div class="card-body text-center">
+          <h5 class="card-title mb-3">🗳️ 投票監控與票數處理</h5>
+
+          <a href="{{ url_for('admin_votes.admin_live_votes') }}" class="btn btn-outline-info w-100 rounded-pill mb-2">🔍 即時監票</a>
+          <a href="{{ url_for('admin_votes.admin_winners') }}" class="btn btn-outline-warning w-100 rounded-pill mb-2">🏆 得票 排名</a>
+          <a href="{{ url_for('admin_promote.promote_page') }}" class="btn btn-outline-primary w-100 rounded-pill mb-2">候選人晉級處理</a>
+
+
+          <a href="{{ url_for('admin_votes.manage_vote_phases') }}" class="btn btn-secondary w-100 rounded-pill mb-2">🛠️ 投票階段管理</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- 🧑‍🏫 教職員 -->
+<div class="col-lg-6 col-md-12">
+  <div class="card h-100 shadow-sm rounded-4" style="background-color: #fff9e5;">
+    <div class="card-body text-center">
+      <h5 class="card-title mb-3">🧑‍🏫 教職員名單與簽到管理</h5>
+      <a href="{{ url_for('staff.admin_staffs') }}" class="btn btn-outline-secondary w-100 rounded-pill mb-2">📋 教職員名單管理</a>
+      <a href="{{ url_for('staff.import_staffs') }}" class="btn btn-outline-secondary w-100 rounded-pill mb-2">📥 匯入教職員名單</a>
+      <a href="{{ url_for('staff.download_sample_staffs') }}" class="btn btn-outline-info w-100 rounded-pill mb-2">⬇️ 下載匯入範例</a>
+      <!--
+      <a href="{{ url_for('admin_staffs.admin_staff_vote_title') }}" class="btn btn-outline-secondary w-100 rounded-pill mb-2">📝 教職員投票標題設定</a>
+      <a href="#" class="btn btn-outline-secondary w-100 rounded-pill mb-2 disabled">📊 教職員票數統計（待完成）</a>
+      <form method="POST" action="{{ url_for('admin_staffs.admin_reset_staff_votes') }}">
+        <button type="submit" class="btn btn-outline-warning w-100 rounded-pill mb-2">♻️ 教職員票數清空</button>
+      </form>
+      -->
+    </div>
+  </div>
+</div>
+
+
+    <div class="col-lg-6 col-md-12">
+  <div class="card h-100 shadow-sm rounded-4" style="background-color: #f8f9fa;">
+    <div class="card-body text-center">
+      <h5 class="card-title mb-3">⚙️ 系統設定 / 登出</h5>
+      <a href="{{ url_for('admin_settings.admin_settings') }}" class="btn btn-outline-dark w-100 rounded-pill mb-2">⏱️ 設定</a>
+      <a href="{{ url_for('admin_logs.view_logs') }}" class="btn btn-outline-secondary w-100 rounded-pill mb-2">📝 操作紀錄</a>
+      <a href="{{ url_for('admin_auth.change_password') }}" class="btn btn-outline-dark w-100 rounded-pill mb-2">
+        🔒 修改管理員密碼
+      </a>
+
+      <a href="{{ url_for('admin_auth.admin_logout') }}" class="btn btn-outline-dark w-100 rounded-pill mb-2">🚪 登出</a>
+    </div>
+  </div>
+</div>
+
+  </div>
+</div>
+{% endblock %}

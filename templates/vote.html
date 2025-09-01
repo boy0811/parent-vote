@@ -1,0 +1,126 @@
+{% extends "layout.html" %}
+{% block title %}{{ vote_title }}{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+  <div class="card shadow rounded-4 mb-4">
+    <div class="card-body text-center">
+      <h2 class="card-title mb-3">{{ vote_title }}</h2>
+      <h5 class="text-center mb-3">
+        📌 當前階段：
+        {% if phase %}
+          <strong>{{ phase.name }}</strong>（最多 <strong>{{ max_votes }}</strong> 票）
+        {% else %}
+          <span class="text-muted">尚未開啟任何投票階段</span>
+        {% endif %}
+      </h5>
+      <div class="text-muted fs-6">
+        ✅ 已選：<strong id="selectedCount">0</strong> / {{ max_votes }}
+      </div>
+      {% if phase %}
+      <p class="text-muted mt-2">
+        請選擇且投滿 <strong>{{ max_votes }}</strong> 位候選人。
+      </p>
+      {% endif %}
+    </div>
+  </div>
+
+  {% if phase %}
+  <form method="POST" action="{{ url_for('auth.vote') }}" onsubmit="return validateVote()">
+    <input type="hidden" name="phase_id" value="{{ phase.id }}">
+
+    <div class="accordion" id="gradeAccordion">
+      {% for grade in ['幼兒園', '一年級', '二年級', '三年級', '四年級', '五年級', '六年級'] %}
+        {% set candidates = grouped_candidates.get(grade, []) %}
+        {% set bg_class = 'bg-warning-subtle' if loop.index is even else '' %}
+        <div class="accordion-item rounded-4 overflow-hidden {{ bg_class }}">
+          <h2 class="accordion-header">
+            <button class="accordion-button {% if loop.first %}show{% else %}collapsed{% endif %} {{ bg_class }} fw-bold text-center" type="button" data-bs-toggle="collapse" data-bs-target="#collapse{{ loop.index }}" aria-expanded="{% if loop.first %}true{% else %}false{% endif %}" aria-controls="collapse{{ loop.index }}">
+              <div class="w-100 text-center">{{ grade }}（{{ candidates|length }}人）</div>
+            </button>
+          </h2>
+          <div id="collapse{{ loop.index }}" class="accordion-collapse collapse {% if loop.first %}show{% endif %}">
+            <div class="accordion-body text-center">
+              {% if candidates %}
+                <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-3">
+                  {% for candidate in candidates %}
+                    <div class="col">
+                      <div class="candidate-item border p-4 rounded-4 shadow-sm h-100 d-flex align-items-center justify-content-center flex-column">
+                        <input type="checkbox" class="vote-checkbox" name="candidate_ids" value="{{ candidate.id }}" id="cand{{ candidate.id }}" onchange="onCheckboxChange(this)">
+                        <label for="cand{{ candidate.id }}" class="w-100 mb-2 fw-bold fs-5" style="cursor:pointer;">{{ candidate.class_name }} {{ candidate.parent_name }}</label>
+                      </div>
+                    </div>
+                  {% endfor %}
+                </div>
+              {% else %}
+                <p class="text-muted">此年級暫無候選人</p>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+
+    <div class="mt-4 text-center">
+      <button type="submit" class="btn btn-success rounded-pill px-5 py-2 shadow">🗳️ 確認投票</button>
+    </div>
+  </form>
+  {% else %}
+    <div class="alert alert-warning text-center">⚠️ 尚未開啟任何投票階段，請稍後再試。</div>
+  {% endif %}
+</div>
+
+<style>
+  .candidate-item {
+    cursor: default; /* 交給 label 指定 pointer */
+    transition: background-color 0.2s, color 0.2s;
+    min-height: 100px;
+  }
+  .candidate-item input[type="checkbox"] {
+    display: none;
+  }
+  .candidate-item input[type="checkbox"]:checked + label {
+    background-color: #1f2a38;
+    color: #fff;
+    display: block;
+    padding: 1rem;
+    border-radius: 1rem;
+  }
+</style>
+
+<script>
+  const maxVotes = {{ max_votes }};
+  const minVotes = maxVotes; // 必須投滿最多票數
+  console.log('maxVotes:', maxVotes);
+
+  document.addEventListener('DOMContentLoaded', () => {
+    updateSelectedCount();
+  });
+
+  function onCheckboxChange(checkbox) {
+    const checkedBoxes = document.querySelectorAll('.vote-checkbox:checked');
+    console.log('checkedBoxes.length:', checkedBoxes.length);
+    if (checkedBoxes.length > maxVotes) {
+      checkbox.checked = false;  // 取消最新勾選
+      alert(`最多只能投 ${maxVotes} 人`);
+      return;
+    }
+    updateSelectedCount();
+  }
+
+  function updateSelectedCount() {
+    const checkedBoxes = document.querySelectorAll('.vote-checkbox:checked');
+    document.getElementById('selectedCount').innerText = checkedBoxes.length;
+  }
+
+  function validateVote() {
+    const checkedBoxes = document.querySelectorAll('.vote-checkbox:checked');
+    console.log('validateVote checkedBoxes.length:', checkedBoxes.length);
+    if (checkedBoxes.length !== maxVotes) {
+      alert(`請選擇且投滿 ${maxVotes} 位候選人`);
+      return false;
+    }
+    return true;
+  }
+</script>
+{% endblock %}

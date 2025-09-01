@@ -1,0 +1,32 @@
+{% extends "layout.html" %}
+{% block title %}各階段最多可投票數設定{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+  <h2 class="mb-4">🔢 各階段最多可投票數設定</h2>
+
+  <form method="POST" action="{{ url_for('update_max_votes') }}">
+    <table class="table table-bordered">
+      <thead class="table-light">
+        <tr>
+          <th>投票階段</th>
+          <th>最多可投票數</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for phase in phases %}
+        <tr>
+          <td>{{ phase.name }}</td>
+          <td>
+            <input type="number" name="max_votes_{{ phase.id }}" class="form-control" min="1" required
+                   value="{{ phase.max_votes }}">
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <button type="submit" class="btn btn-outline-success">儲存</button>
+    <a href="{{ url_for('admin_dashboard') }}" class="btn btn-secondary">返回主控台</a>
+  </form>
+</div>
+{% endblock %}

@@ -1,0 +1,113 @@
+{% extends "layout.html" %}
+{% block title %}{{ vote_title }}{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+  <div class="text-center mb-4">
+    <h2>{{ vote_title }}</h2>
+    <h5 id="phaseTitle">
+      📌 當前階段：
+      {% if current_phase %}
+        <strong>{{ current_phase.name }}</strong>（晉級 <strong>{{ promote_count }}</strong> 人）
+      {% else %}
+        <span class="text-muted">尚未開始</span>
+      {% endif %}
+    </h5>
+    <p class="text-muted">每 <strong>{{ refresh_interval }}</strong> 秒自動刷新</p>
+
+    <div class="mt-3">
+      {% if current_phase and current_phase.is_open %}
+        <form method="post" action="{{ url_for('admin_votes.close_phase') }}">
+          <button type="submit" class="btn btn-danger btn-lg rounded-pill">✋ 關閉投票</button>
+        </form>
+      {% elif current_phase and not current_phase.is_open and not has_reviewed %}
+        <form method="post" action="{{ url_for('admin_votes.review_phase', phase_id=current_phase.id) }}">
+          <button type="submit" class="btn btn-primary btn-lg rounded-pill">🔍 審查票數</button>
+        </form>
+      {% elif has_reviewed %}
+        <div class="d-grid gap-3 col-12 col-md-6 mx-auto">
+          <a href="{{ url_for('admin_votes.export_winners', phase_id=current_phase.id) }}" class="btn btn-success btn-lg rounded-pill">
+            📥 匯出當選名單
+          </a>
+          <a href="{{ url_for('admin_promote.promote_next_phase', current_phase_id=current_phase.id) }}" class="btn btn-secondary btn-lg rounded-pill">
+            ⏩ 切換到下一階段
+          </a>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <table class="table table-bordered table-striped align-middle fs-5" id="voteTable">
+    <thead class="table-dark text-center">
+      <tr>
+        <th>排名</th>
+        <th>班級</th>
+        <th>家長姓名</th>
+        <th>得票數</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for c in candidates %}
+      <tr>
+        <td>{{ c.rank_number }}</td>
+        <td>{{ c.class_display or '-' }}</td>
+        <td>{{ c.parent_name or '-' }}</td>
+        <td><span class="vote-count" data-id="{{ c.id }}">{{ c.vote_count or 0 }}</span></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <p id="errorMessage" class="text-center text-danger mt-3" style="display:none;">⚠️ 資料讀取失敗</p>
+</div>
+
+<script>
+  const REFRESH_INTERVAL = {{ refresh_interval * 1000 }};
+  const API_URL = "{{ url_for('admin_votes.api_live_votes') }}";
+
+  function animateCount(element, newCount) {
+    const current = parseInt(element.innerText) || 0;
+    const duration = 500;
+    const frameRate = 30;
+    const totalFrames = Math.round(duration / (1000 / frameRate));
+    let frame = 0;
+    const increment = (newCount - current) / totalFrames;
+
+    function update() {
+      frame++;
+      const value = current + increment * frame;
+      element.innerText = Math.round(value);
+      if (frame < totalFrames) {
+        requestAnimationFrame(update);
+      } else {
+        element.innerText = newCount;
+      }
+    }
+    update();
+  }
+
+  function fetchVoteData() {
+    fetch(API_URL)
+      .then(response => response.json())
+      .then(data => {
+        document.getElementById('phaseTitle').innerHTML = `📌 當前階段：<strong>${data.phase || '尚未開始'}</strong>（晉級 <strong>${data.promote_count || 0}</strong> 人）`;
+
+        const voteCounts = data.vote_counts || {};
+        document.querySelectorAll('.vote-count').forEach(span => {
+          const id = span.getAttribute('data-id');
+          const newCount = voteCounts[id] !== undefined ? voteCounts[id] : 0;
+          animateCount(span, newCount);
+        });
+
+        document.getElementById('errorMessage').style.display = 'none';
+      })
+      .catch(err => {
+        console.error('票數讀取失敗:', err);
+        document.getElementById('errorMessage').style.display = 'block';
+      });
+  }
+
+  fetchVoteData();
+  setInterval(fetchVoteData, REFRESH_INTERVAL);
+</script>
+{% endblock %}

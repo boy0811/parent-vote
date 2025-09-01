@@ -1,0 +1,159 @@
+{% extends "layout.html" %}
+{% block title %}{{ current_phase.name if current_phase else '快速投票' }}{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+  <div class="text-center mb-4">
+    <h2>{{ current_phase.name if current_phase else '快速投票' }}</h2>
+  </div>
+
+  <!-- ✅ 顯示已點幾位 -->
+  <div class="text-center mb-3">
+    <span class="fs-5">已點擊 <strong id="voteCounter">0</strong> 位候選人</span>
+  </div>
+
+  {% if grouped_candidates %}
+    <!-- 年級按鈕 -->
+    <div class="mb-4 text-center">
+      {% for grade in grouped_candidates.keys() %}
+        <button class="btn btn-outline-secondary m-1 grade-btn {% if loop.first %}active{% endif %}" onclick="showGrade('{{ grade }}', this)">
+          {{ grade }}
+        </button>
+      {% endfor %}
+    </div>
+
+    <!-- 年級候選人卡片 -->
+    {% for grade, candidates in grouped_candidates.items() %}
+      <div class="grade-section" id="grade-{{ grade }}" {% if not loop.first %}style="display: none;"{% endif %}>
+        <h4 class="mb-3">{{ grade }}</h4>
+        <div class="row g-3">
+          {% for candidate in candidates %}
+            <div class="col-6 col-sm-4 col-md-3 col-lg-2">
+              <div class="card shadow-sm rounded-4 text-center p-3 border-0 w-100 h-100 candidate-card"
+                   data-id="{{ candidate.id }}"
+                   tabindex="0"
+                   onclick="vote({{ candidate.id }})"
+                   onkeydown="handleKey(event, {{ candidate.id }})">
+                <div class="fw-semibold fs-5 mb-1">
+                  {{ candidate.class_name }} {{ candidate.parent_name }}
+                </div>
+                <div class="fw-bold fs-2 my-2 vote-count" id="vote-count-{{ candidate.id }}">
+                  {{ vote_counts.get(candidate.id, 0) }}
+                </div>
+                <div class="btn btn-outline-primary rounded-pill px-3 py-1 mt-2">➕ +1 投票</div>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+    {% endfor %}
+  {% else %}
+    <p class="text-center text-muted fs-4">⚠️ 尚無候選人資料</p>
+  {% endif %}
+</div>
+
+<style>
+  .candidate-card.selected {
+    outline: 3px solid #0d6efd;
+  }
+</style>
+
+<script>
+  let votedIds = new Set();
+  let selectedIndex = 0;
+
+  function vote(candidateId) {
+    const isNewVote = !votedIds.has(candidateId);
+    if (isNewVote) {
+      votedIds.add(candidateId);
+      document.getElementById('voteCounter').innerText = votedIds.size;
+    }
+
+    fetch("{{ url_for('admin_quickvote.quick_vote') }}", {
+      method: "POST",
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'X-Requested-With': 'XMLHttpRequest'
+      },
+      body: `candidate_id=${candidateId}`
+    })
+    .then(response => {
+      if (!response.ok) throw new Error("投票失敗");
+      return response.json();
+    })
+    .then(data => {
+      const el = document.getElementById("vote-count-" + candidateId);
+      if (el) el.innerText = data.vote_count;
+    })
+    .catch(error => {
+      alert("⚠️ 投票失敗");
+      console.error(error);
+    });
+  }
+
+  function handleKey(e, candidateId) {
+    if (e.key === "Enter") {
+      vote(candidateId);
+    }
+  }
+
+  function showGrade(grade, btn) {
+    document.querySelectorAll('.grade-section').forEach(section => {
+      section.style.display = 'none';
+    });
+    document.getElementById('grade-' + grade).style.display = 'block';
+
+    document.querySelectorAll('.grade-btn').forEach(b => b.classList.remove('active', 'btn-primary'));
+    btn.classList.add('active', 'btn-primary');
+
+    selectedIndex = 0;
+    highlightCard();
+  }
+
+  function getVisibleCards() {
+    const visibleSection = document.querySelector('.grade-section:not([style*="display: none"])');
+    if (!visibleSection) return [];
+    return Array.from(visibleSection.querySelectorAll('.candidate-card'));
+  }
+
+  function highlightCard() {
+    const cards = getVisibleCards();
+    cards.forEach(c => c.classList.remove('selected'));
+    if (cards[selectedIndex]) {
+      cards[selectedIndex].classList.add('selected');
+      cards[selectedIndex].focus();
+    }
+  }
+
+  document.addEventListener('keydown', function (e) {
+    const cards = getVisibleCards();
+    const columns = 6; // 對應 col-lg-2 一排 6 個
+
+    if (cards.length === 0) return;
+
+    if (e.key === 'ArrowRight') {
+      selectedIndex = (selectedIndex + 1) % cards.length;
+      highlightCard();
+      e.preventDefault();
+    } else if (e.key === 'ArrowLeft') {
+      selectedIndex = (selectedIndex - 1 + cards.length) % cards.length;
+      highlightCard();
+      e.preventDefault();
+    } else if (e.key === 'ArrowDown') {
+      selectedIndex = (selectedIndex + columns) % cards.length;
+      highlightCard();
+      e.preventDefault();
+    } else if (e.key === 'ArrowUp') {
+      selectedIndex = (selectedIndex - columns + cards.length) % cards.length;
+      highlightCard();
+      e.preventDefault();
+    } else if (e.key === 'Enter') {
+      const current = cards[selectedIndex];
+      if (current) current.click();
+      e.preventDefault();
+    }
+  });
+
+  window.onload = highlightCard;
+</script>
+{% endblock %}

@@ -1,0 +1,36 @@
+{% extends "layout.html" %}
+
+{% block title %}{{ vote_title }}{% endblock %}
+
+{% block content %}
+<div class="container mt-5 text-center">
+  <div class="card shadow rounded-4 p-5 mx-auto" style="max-width: 500px;">
+
+    <h2 class="mb-3">{{ vote_title }}</h2>
+    <h4 class="mb-4 text-success">✅ 您已完成投票</h4>
+
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}
+        <div class="alert alert-success">
+          {% for message in messages %}
+            {{ message }}
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+
+    <p class="mb-4 text-muted fs-5">本階段每人僅能投票一次，感謝您的參與！</p>
+
+    <div class="d-grid gap-3">
+      <a href="{{ url_for('public_votes.public_winners') }}" class="btn btn-outline-primary rounded-pill px-4 py-2 shadow-sm" target="_blank">
+        📊 查看即時票數
+      </a>
+
+      <a href="{{ url_for('auth.login') }}" class="btn btn-outline-secondary rounded-pill px-4 py-2 shadow-sm">
+        🏠 返回首頁
+      </a>
+    </div>
+
+  </div>
+</div>
+{% endblock %}

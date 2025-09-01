@@ -1,0 +1,47 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="container mt-5">
+    <h2 class="mb-4 text-center">
+        {{ '➕ 新增教職員' if not staff else '✏️ 編輯教職員' }}
+    </h2>
+
+    <div class="card shadow rounded-4 mx-auto p-4" style="max-width: 500px;">
+        <form method="post" action="{{ url_for('admin_staffs.admin_staff_add') if not staff else url_for('admin_staffs.admin_staff_edit', staff_id=staff.id) }}">
+            
+            <div class="mb-3">
+                <label for="username" class="form-label">帳號 *</label>
+                <input type="text" class="form-control rounded-pill" id="username" name="username"
+                       value="{{ staff.username if staff else '' }}" required>
+            </div>
+
+            <div class="mb-3">
+                <label for="name" class="form-label">姓名</label>
+                <input type="text" class="form-control rounded-pill" id="name" name="name"
+                       value="{{ staff.name if staff else '' }}">
+            </div>
+
+            <div class="mb-3">
+                <label for="class_name" class="form-label">班級</label>
+                <input type="text" class="form-control rounded-pill" id="class_name" name="class_name"
+                       value="{{ staff.class_name if staff else '' }}">
+            </div>
+
+            <div class="mb-3">
+                <label for="password" class="form-label">
+                    {{ '密碼 *' if not staff else '密碼（如不修改可留空）' }}
+                </label>
+                <input type="password" class="form-control rounded-pill" id="password" name="password"
+                       {% if not staff %} required {% endif %}>
+            </div>
+
+            <div class="text-center mt-4">
+                <button type="submit" class="btn btn-primary rounded-pill px-5">
+                    {{ '➕ 新增' if not staff else '💾 儲存修改' }}
+                </button>
+                <a href="{{ url_for('admin_staffs.admin_staff_list') }}" class="btn btn-outline-secondary rounded-pill ms-3 px-4">取消</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

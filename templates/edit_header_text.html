@@ -1,0 +1,17 @@
+{% extends "layout.html" %}
+{% block title %}家長投票標頭設定{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+  <h2 class="mb-4">📝 家長投票標頭設定</h2>
+
+  <form method="POST" action="{{ url_for('update_header_text') }}">
+    <div class="mb-3">
+      <label for="header_text" class="form-label">請輸入家長投票上方顯示的說明文字：</label>
+      <textarea name="header_text" id="header_text" class="form-control" rows="5" required>{{ header_text }}</textarea>
+    </div>
+    <button type="submit" class="btn btn-outline-success">儲存</button>
+    <a href="{{ url_for('admin_dashboard') }}" class="btn btn-secondary">返回主控台</a>
+  </form>
+</div>
+{% endblock %}

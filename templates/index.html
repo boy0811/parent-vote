@@ -1,0 +1,37 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<style>
+  .landing {
+    padding-top: 4rem;
+    padding-bottom: 4rem;
+  }
+  .btn.hover-lift:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 .5rem 1rem rgba(0,0,0,.15);
+  }
+</style>
+
+<div class="container text-center landing">
+
+  <!-- 主標題 -->
+  <h1 class="fw-bold mb-4 display-5">歡迎來到文化國小家長會投票系統</h1>
+
+  <!-- 副標 -->
+  <p class="text-muted mb-5 fs-5">請選擇您的身份登入</p>
+
+  <!-- 登入按鈕 -->
+  <div class="d-grid gap-4 col-12 col-md-6 mx-auto">
+    <a href="{{ url_for('auth.login') }}" class="btn btn-primary btn-lg rounded-pill shadow-sm hover-lift">
+      👨‍👩‍👧‍👦 家長登入
+    </a>
+    <a href="{{ url_for('staff.staff_login') }}" class="btn btn-success btn-lg rounded-pill shadow-sm hover-lift">
+      👩‍🏫 教職員登入
+    </a>
+    <a href="{{ url_for('admin_auth.admin_login') }}" class="btn btn-outline-dark btn-lg rounded-pill shadow-sm hover-lift">
+      🔐 管理員登入
+    </a>
+  </div>
+
+</div>
+{% endblock %}

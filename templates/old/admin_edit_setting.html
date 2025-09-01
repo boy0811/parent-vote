@@ -1,0 +1,15 @@
+{% extends "layout.html" %}
+{% block title %}編輯設定：{{ setting.key }}{% endblock %}
+
+{% block content %}
+<h2 class="mb-4">⚙️ 編輯設定：{{ setting.key }}</h2>
+
+<form method="POST">
+  <div class="mb-3">
+    <label for="value" class="form-label">設定值</label>
+    <input type="text" id="value" name="value" class="form-control" value="{{ setting.value }}" required>
+  </div>
+  <button type="submit" class="btn btn-primary">💾 儲存</button>
+  <a href="{{ url_for('admin_settings') }}" class="btn btn-secondary">取消</a>
+</form>
+{% endblock %}

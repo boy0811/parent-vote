@@ -1,0 +1,123 @@
+from flask import Blueprint, render_template, redirect, url_for, request, flash, session
+from models import db, Candidate, VotePhase
+import pandas as pd
+
+admin_candidates_bp = Blueprint('admin_candidates', __name__, url_prefix='/admin')
+
+
+# 匯入候選人
+@admin_candidates_bp.route('/candidates/import', methods=['GET', 'POST'], endpoint='admin_import_candidates')
+def import_candidates():
+    if 'admin' not in session:
+        return redirect(url_for('admin.admin_auth.admin_login'))
+
+    if request.method == 'GET':
+        return render_template('admin_candidate_import.html')
+
+    if 'file' not in request.files or request.files['file'].filename == '':
+        flash('請選擇有效檔案', 'danger')
+        return redirect(request.url)
+
+    file = request.files['file']
+    df = pd.read_excel(file)
+    for _, row in df.iterrows():
+        candidate = Candidate(
+            username=row['帳號'],
+            name=row['家長姓名'],
+            class_name=row['班級'],
+            parent_name=row['家長姓名']
+        )
+        candidate.set_password(str(row['密碼']))
+        db.session.add(candidate)
+
+    db.session.commit()
+    flash('匯入成功', 'success')
+    return redirect(url_for('admin_candidates.admin_candidate_list'))
+
+
+# 同票處理
+@admin_candidates_bp.route('/select_tiebreak', methods=['GET', 'POST'], endpoint='admin_select_tiebreak')
+def select_tiebreak():
+    if 'admin' not in session:
+        return redirect(url_for('admin.admin_auth.admin_login'))
+    return render_template('admin_select_tiebreak.html')
+
+
+# 候選人晉級
+@admin_candidates_bp.route('/promote', methods=['GET', 'POST'], endpoint='admin_promote')
+def promote_candidates():
+    if 'admin' not in session:
+        return redirect(url_for('admin.admin_auth.admin_login'))
+
+    phases = VotePhase.query.all()
+    candidates = Candidate.query.all()
+    return render_template('admin_promote.html', phases=phases, candidates=candidates)
+
+
+# 候選人列表
+@admin_candidates_bp.route('/candidates', methods=['GET'])
+def admin_candidate_list():
+    if 'admin' not in session:
+        return redirect(url_for('admin.admin_auth.admin_login'))
+
+    candidates = Candidate.query.all()
+    return render_template('admin_candidates.html', candidates=candidates)
+
+
+# 新增候選人
+@admin_candidates_bp.route('/candidates/add', methods=['GET', 'POST'])
+def admin_add_candidate():
+    if 'admin' not in session:
+        return redirect(url_for('admin.admin_auth.admin_login'))
+
+    if request.method == 'POST':
+        candidate = Candidate(
+            username=request.form['username'],
+            name=request.form['name'],
+            class_name=request.form['class_name'],
+            parent_name=request.form['parent_name']
+        )
+        candidate.set_password(request.form['password'])
+        db.session.add(candidate)
+        db.session.commit()
+        flash('新增成功', 'success')
+        return redirect(url_for('admin_candidates.admin_candidate_list'))
+
+    return render_template('admin_candidate_form.html', candidate=None)
+
+
+# 編輯候選人
+@admin_candidates_bp.route('/candidates/edit/<int:candidate_id>', methods=['GET', 'POST'])
+def admin_edit_candidate(candidate_id):
+    if 'admin' not in session:
+        return redirect(url_for('admin.admin_auth.admin_login'))
+
+    candidate = Candidate.query.get_or_404(candidate_id)
+
+    if request.method == 'POST':
+        candidate.username = request.form['username']
+        candidate.name = request.form['name']
+        candidate.class_name = request.form['class_name']
+        candidate.parent_name = request.form['parent_name']
+
+        if request.form['password']:
+            candidate.set_password(request.form['password'])
+
+        db.session.commit()
+        flash('修改成功', 'success')
+        return redirect(url_for('admin_candidates.admin_candidate_list'))
+
+    return render_template('admin_candidate_form.html', candidate=candidate)
+
+
+# 刪除候選人
+@admin_candidates_bp.route('/candidates/delete/<int:candidate_id>', methods=['GET'])
+def admin_delete_candidate(candidate_id):
+    if 'admin' not in session:
+        return redirect(url_for('admin.admin_auth.admin_login'))
+
+    candidate = Candidate.query.get_or_404(candidate_id)
+    db.session.delete(candidate)
+    db.session.commit()
+    flash('刪除成功', 'info')
+    return redirect(url_for('admin_candidates.admin_candidate_list'))

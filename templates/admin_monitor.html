@@ -1,0 +1,54 @@
+{% extends "layout.html" %}
+{% block title %}即時監票{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+  <h2>📊 即時監票 - {{ phase.name }}</h2>
+
+  <div class="alert alert-info">每 {{ refresh_seconds }} 秒自動刷新一次</div>
+
+  <style>
+    .table th, .table td {
+        text-align: center;
+        vertical-align: middle;
+    }
+    .top-rank {
+        background-color: #d1e7dd !important;
+        font-weight: bold;
+    }
+  </style>
+
+  <table class="table table-bordered table-striped">
+    <thead class="table-light">
+      <tr>
+        <th>排名</th>
+        <th>班級</th>
+        <th>家長姓名</th>
+        <th>得票數</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in results %}
+      <tr class="{% if loop.index <= 3 %}top-rank{% endif %}">
+        <td>{{ loop.index }}</td>
+        <td>{{ row[2] or '-' }}</td>  {# class_name #}
+        <td>{{ row[3] or '-' }}</td>  {# parent_name #}
+        <td>{{ row[4] }}</td>         {# vote_count #}
+      </tr>
+      {% else %}
+      <tr>
+        <td colspan="4" class="text-center">尚無投票資料</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <a href="{{ url_for('admin_dashboard') }}" class="btn btn-secondary">← 返回主控台</a>
+</div>
+
+<script>
+  setTimeout(() => {
+    window.location.reload();
+  }, {{ refresh_seconds * 1000 }});
+</script>
+{% endblock %}

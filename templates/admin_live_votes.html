@@ -1,0 +1,284 @@
+{% extends "layout.html" %}
+{% block title %}{{ vote_title }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+  <div class="text-center mb-3">
+    <h2>{{ vote_title }}</h2>
+    <div class="mt-2">
+      📌 當前階段：<strong>{{ current_phase.name if current_phase else "尚未開始" }}</strong>
+    </div>
+    {% if is_closed %}
+      <div class="alert alert-warning mt-2">⚠️ 此階段投票已結束，以下為最終票數。</div>
+    {% else %}
+      <div class="text-muted">
+        票數每 {{ refresh_interval }} 秒更新，年級輪播每 {{ slide_interval }} 秒切換
+      </div>
+    {% endif %}
+  </div>
+
+  <!-- 年級選單 -->
+  <div class="text-center mb-3" id="gradeMenu">
+    <button class="btn btn-outline-primary m-1 grade-tab active" data-grade="全部">全部</button>
+    {% for grade in grouped_candidates_serializable.keys() %}
+      {% if grade != '全部' %}
+        <button class="btn btn-outline-primary m-1 grade-tab" data-grade="{{ grade }}">{{ grade }}</button>
+      {% endif %}
+    {% endfor %}
+  </div>
+
+  <div class="text-center mb-3">
+    <strong>目前年級：</strong><span id="currentGrade">全部</span>
+  </div>
+
+  <!-- 操作區 -->
+  {% if not is_closed %}
+  <div class="text-center mb-4 d-print-none" id="controlPanel">
+    <button class="btn btn-secondary me-2" onclick="toggleFullscreen()">🖥️ 全螢幕</button>
+    <button class="btn btn-primary" id="toggleSlideBtn" onclick="toggleSlide()">⏸️ 暫停輪播</button>
+    <button class="btn btn-danger me-2" onclick="closeVote()">🔴 關閉投票</button>
+    <a href="/admin/winners" class="btn btn-success me-2">📊 前往看結果</a>
+  </div>
+  {% endif %}
+
+  <!-- 候選人卡片區 -->
+  <div id="gradeSections">
+    {% set all_key_exists = '全部' in grouped_candidates_serializable %}
+    {% if not all_key_exists %}
+      <div class="grade-section" data-grade="全部" style="display: block;">
+        <div class="row" id="cardContainer-全部"></div>
+        <div class="text-center mt-3">
+          <!-- ✅ 把 grade 傳進 JS -->
+          <button class="btn btn-outline-secondary me-2" data-role="prev" data-grade="全部" onclick="prevPageAcrossGrades('全部')">⬅️ 上一頁</button>
+          <span id="pageInfo-全部"></span>
+          <button class="btn btn-outline-secondary ms-2" data-role="next" data-grade="全部" onclick="nextPageAcrossGrades('全部')">➡️ 下一頁</button>
+        </div>
+      </div>
+    {% endif %}
+
+    {% for grade, candidates in grouped_candidates_serializable.items() %}
+      <div class="grade-section" data-grade="{{ grade }}" style="{% if grade != '全部' %}display: none;{% else %}display: block;{% endif %}">
+        <div class="row" id="cardContainer-{{ grade }}"></div>
+
+        <div class="text-center mt-3">
+          <!-- ✅ 同樣把 grade 傳入 -->
+          <button class="btn btn-outline-secondary me-2" data-role="prev" data-grade="{{ grade }}" onclick="prevPageAcrossGrades('{{ grade }}')">⬅️ 上一頁</button>
+          <span id="pageInfo-{{ grade }}"></span>
+          <button class="btn btn-outline-secondary ms-2" data-role="next" data-grade="{{ grade }}" onclick="nextPageAcrossGrades('{{ grade }}')">➡️ 下一頁</button>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+</div>
+
+<!-- JS 區 -->
+<script>
+  const IS_CLOSED      = {{ 'true' if is_closed else 'false' }};
+  const REFRESH_MS     = {{ refresh_interval * 1000 if not is_closed else 10000 }};  // 票數刷新
+  const SLIDE_MS       = {{ slide_interval * 1000 if not is_closed else 5000 }};     // 輪播
+  const CARDS_PER_PAGE = 30;
+
+  const GRADE_ORDER = ['幼兒園', '一年級', '二年級', '三年級', '四年級', '五年級', '六年級'];
+  const rawGrouped = {{ grouped_candidates_serializable|tojson }};
+  const candidatesByGrade = {};
+
+  for (const [g, arr] of Object.entries(rawGrouped)) {
+    candidatesByGrade[g] = arr.slice();
+  }
+  if (!candidatesByGrade['全部']) {
+    let all = [];
+    GRADE_ORDER.forEach(order => {
+      if (candidatesByGrade[order]) all = all.concat(candidatesByGrade[order]);
+    });
+    Object.keys(candidatesByGrade).forEach(g => {
+      if (g !== '全部' && !GRADE_ORDER.includes(g)) all = all.concat(candidatesByGrade[g]);
+    });
+    candidatesByGrade['全部'] = all;
+  }
+
+  const grades = Array.from(document.querySelectorAll('.grade-tab')).map(btn => btn.dataset.grade);
+  let currentIndex = 0, paused = false, slideTimer = null;
+  const currentPages = {};   // 各 grade 目前頁碼
+
+  function renderCards(grade) {
+    const candidates = candidatesByGrade[grade] || [];
+    const page = currentPages[grade] || 1;
+    const start = (page - 1) * CARDS_PER_PAGE;
+    const end = start + CARDS_PER_PAGE;
+    const visible = candidates.slice(start, end);
+
+    const container = document.getElementById(`cardContainer-${grade}`);
+    const pageInfo  = document.getElementById(`pageInfo-${grade}`);
+    if (!container) return;
+
+    container.innerHTML = '';
+    visible.forEach(c => {
+      const col = document.createElement('div');
+      col.className = 'col-lg-2 col-md-3 col-sm-4 col-6 mb-3';
+      col.innerHTML = `
+        <div class="card shadow text-center fs-5 p-3 candidate-card" data-id="${c.id}">
+          <div><strong>${c.class_display} ${c.parent_name}</strong></div>
+          <div class="text-success mt-2 fs-4 vote-count">${c.votes} 票</div>
+        </div>`;
+      container.appendChild(col);
+    });
+
+    const totalPages = Math.ceil(candidates.length / CARDS_PER_PAGE) || 1;
+    if (pageInfo) pageInfo.textContent = `第 ${page} 頁 / 共 ${totalPages} 頁`;
+    currentPages[grade] = Math.min(page, totalPages);
+
+    // ✅ 同 grade 的上下頁按鈕啟用/停用
+    const section = document.querySelector(`.grade-section[data-grade="${grade}"]`);
+    if (section) {
+      const prevBtn = section.querySelector('button[data-role="prev"]');
+      const nextBtn = section.querySelector('button[data-role="next"]');
+      if (prevBtn) prevBtn.disabled = (totalPages === 1 || page <= 1);
+      if (nextBtn) nextBtn.disabled = (totalPages === 1 || page >= totalPages);
+    }
+  }
+
+  function showGrade(grade) {
+    document.querySelectorAll('.grade-section').forEach(div => {
+      div.style.display = div.dataset.grade === grade ? 'block' : 'none';
+    });
+    document.querySelectorAll('.grade-tab').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.grade === grade);
+    });
+    document.getElementById('currentGrade').textContent = grade;
+
+    if (!currentPages[grade]) currentPages[grade] = 1;
+    renderCards(grade);
+  }
+
+  function nextGrade() {
+    const currentGrade = grades[currentIndex];
+    if (currentGrade === '全部') return;   // 「全部」不輪播
+    currentIndex = (currentIndex + 1) % grades.length;
+    if (grades[currentIndex] === '全部') currentIndex = (currentIndex + 1) % grades.length;
+    showGrade(grades[currentIndex]);
+  }
+
+  function toggleSlide() {
+    paused = !paused;
+    document.getElementById('toggleSlideBtn').textContent = paused ? '▶️ 繼續輪播' : '⏸️ 暫停輪播';
+  }
+
+  function startSlide() {
+    slideTimer = setInterval(() => {
+      if (!paused) nextGrade();
+    }, SLIDE_MS);
+  }
+
+  // ✅ 修正：支援「全部」也能翻頁
+  function prevPageAcrossGrades(grade) {
+    grade = grade || grades[currentIndex];
+    const total = Math.ceil((candidatesByGrade[grade] || []).length / CARDS_PER_PAGE) || 1;
+
+    if ((currentPages[grade] || 1) > 1) {
+      currentPages[grade]--;
+      renderCards(grade);
+      return;
+    }
+
+    // 第一頁再往前：如果是「全部」就停住；否則跳到前一個年級最後一頁
+    if (grade === '全部') {
+      currentPages[grade] = 1;
+      renderCards(grade);
+      return;
+    }
+
+    do {
+      currentIndex = (currentIndex - 1 + grades.length) % grades.length;
+    } while (grades[currentIndex] === '全部'); // 跳過全部
+    const prevGrade = grades[currentIndex];
+    const totalPrev = Math.ceil((candidatesByGrade[prevGrade] || []).length / CARDS_PER_PAGE) || 1;
+    currentPages[prevGrade] = totalPrev;
+    showGrade(prevGrade);
+  }
+
+  function nextPageAcrossGrades(grade) {
+    grade = grade || grades[currentIndex];
+    const total = Math.ceil((candidatesByGrade[grade] || []).length / CARDS_PER_PAGE) || 1;
+
+    if ((currentPages[grade] || 1) < total) {
+      currentPages[grade]++;
+      renderCards(grade);
+      return;
+    }
+
+    // 最後一頁再往後：如果是「全部」就停住；否則跳到下一個年級第一頁
+    if (grade === '全部') {
+      currentPages[grade] = total;
+      renderCards(grade);
+      return;
+    }
+
+    do {
+      currentIndex = (currentIndex + 1) % grades.length;
+    } while (grades[currentIndex] === '全部'); // 跳過全部
+    const nextGrade = grades[currentIndex];
+    currentPages[nextGrade] = 1;
+    showGrade(nextGrade);
+  }
+
+  function updateVotes() {
+    fetch('/admin/api/live_votes')
+      .then(res => res.json())
+      .then(list => {
+        const items = Array.isArray(list) ? list : (list.candidates || []);
+        items.forEach(item => {
+          Object.keys(candidatesByGrade).forEach(g => {
+            candidatesByGrade[g].forEach(c => {
+              if (c.id === item.id) c.votes = item.vote_count || item.votes || 0;
+            });
+          });
+
+          const card = document.querySelector(`.candidate-card[data-id='${item.id}']`);
+          if (card) {
+            const voteEl = card.querySelector('.vote-count');
+            if (voteEl) voteEl.textContent = `${item.vote_count || item.votes || 0} 票`;
+          }
+        });
+
+        showGrade(grades[currentIndex]);
+      });
+  }
+
+  function closeVote() {
+    if (confirm('確定要關閉投票？')) {
+      fetch('/admin/phase/close', { method: 'POST' })
+        .then(() => window.location.href = '/admin/winners');
+    }
+  }
+
+  function toggleFullscreen() {
+    if (!document.fullscreenElement) document.documentElement.requestFullscreen();
+    else document.exitFullscreen();
+  }
+
+  document.addEventListener('fullscreenchange', () => {
+    const isFullscreen = !!document.fullscreenElement;
+    const panel = document.getElementById('controlPanel');
+    if (panel) panel.classList.toggle('d-none', isFullscreen);
+  });
+
+  document.addEventListener('DOMContentLoaded', () => {
+    grades.forEach(g => currentPages[g] = 1);
+    currentIndex = grades.indexOf('全部') !== -1 ? grades.indexOf('全部') : 0;
+    showGrade(grades[currentIndex]);
+
+    document.querySelectorAll('.grade-tab').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const grade = btn.dataset.grade;
+        currentIndex = grades.indexOf(grade);
+        showGrade(grade);
+      });
+    });
+
+    if (!IS_CLOSED) {
+      startSlide();
+      setInterval(updateVotes, REFRESH_MS);
+    }
+  });
+</script>
+{% endblock %}

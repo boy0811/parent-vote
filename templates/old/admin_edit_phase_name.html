@@ -1,0 +1,34 @@
+{% extends "layout.html" %}
+{% block title %}編輯階段名稱{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+  <h2 class="mb-4">✏️ 編輯「{{ phase.name }}」名稱</h2>
+
+  <!-- 表單開始 -->
+  <form method="POST">
+    <div class="mb-3">
+      <label for="name" class="form-label">階段名稱</label>
+      <input type="text" class="form-control" id="name" name="name" value="{{ phase.name }}" required>
+    </div>
+
+    <!-- 按鈕列 -->
+    <div class="d-flex gap-2">
+      <button type="submit" class="btn btn-primary">💾 儲存變更</button>
+      <a href="{{ url_for('admin_settings') }}" class="btn btn-secondary">取消</a>
+    </div>
+  </form>
+
+  <!-- Flash 訊息 -->
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      {% for category, msg in messages %}
+        <div class="alert alert-{{ category }} alert-dismissible fade show mt-3" role="alert">
+          {{ msg }}
+          <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+      {% endfor %}
+    {% endif %}
+  {% endwith %}
+</div>
+{% endblock %}

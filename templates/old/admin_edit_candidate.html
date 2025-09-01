@@ -1,0 +1,43 @@
+{% extends "layout.html" %}
+{% block title %}編輯候選人{% endblock %}
+
+{% block content %}
+<h2>✏️ 編輯候選人</h2>
+
+<form method="post">
+  <div class="mb-3">
+    <label for="username" class="form-label">帳號</label>
+    <input type="text" id="username" name="username" class="form-control" value="{{ candidate.username }}" required>
+  </div>
+
+  <div class="mb-3">
+    <label for="password" class="form-label">密碼（留空不修改）</label>
+    <input type="password" id="password" name="password" class="form-control" placeholder="新密碼">
+  </div>
+
+  <div class="mb-3">
+    <label for="class_name" class="form-label">班級</label>
+    <input type="text" id="class_name" name="class_name" class="form-control" value="{{ candidate.class_name or '' }}">
+  </div>
+
+  <div class="mb-3">
+    <label for="parent_name" class="form-label">家長姓名</label>
+    <input type="text" id="parent_name" name="parent_name" class="form-control" value="{{ candidate.parent_name or '' }}">
+  </div>
+
+  <button type="submit" class="btn btn-success">更新資料</button>
+  <a href="{{ url_for('admin_candidates.admin_candidates') }}" class="btn btn-secondary">取消</a>
+</form>
+
+<!-- 顯示錯誤或成功訊息 -->
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    {% for category, msg in messages %}
+    <div class="alert alert-{{ category }} alert-dismissible fade show mt-3" role="alert">
+      {{ msg }}
+      <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    {% endfor %}
+  {% endif %}
+{% endwith %}
+{% endblock %}

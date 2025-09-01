@@ -1,0 +1,40 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="container mt-5">
+    <h2 class="mb-4 text-center">📋 候選人資料 {{ '編輯' if candidate else '新增' }}</h2>
+
+    <div class="card shadow-sm rounded-4 col-md-6 mx-auto">
+        <div class="card-body">
+            <form method="POST">
+
+                <div class="mb-3">
+                    <label for="username" class="form-label">帳號</label>
+                    <input type="text" class="form-control" id="username" name="username" value="{{ candidate.username if candidate else '' }}" required>
+                </div>
+
+                <div class="mb-3">
+                    <label for="password" class="form-label">密碼</label>
+                    <input type="password" class="form-control" id="password" name="password" {% if not candidate %} required {% endif %}>
+                </div>
+
+                <div class="mb-3">
+                    <label for="parent_name" class="form-label">家長姓名</label>
+                    <input type="text" class="form-control" id="parent_name" name="parent_name" value="{{ candidate.parent_name if candidate else '' }}" required>
+                </div>
+
+                <div class="mb-3">
+                    <label for="class_name" class="form-label">學生班級</label>
+                    <input type="text" class="form-control" id="class_name" name="class_name" value="{{ candidate.class_name if candidate else '' }}" required>
+                </div>
+
+                <div class="d-grid gap-2 mt-4">
+                    <button type="submit" class="btn btn-primary btn-lg">💾 儲存</button>
+                    <a href="{{ url_for('admin_candidates.admin_candidate_list') }}" class="btn btn-secondary btn-lg">↩️ 返回候選人列表</a>
+                </div>
+
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

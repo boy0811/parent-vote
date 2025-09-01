@@ -1,0 +1,108 @@
+{% extends "layout.html" %}
+{% block title %}家長簽到總表{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+
+  <h2 class="text-center mb-4">📋 家長簽到總表</h2>
+
+  {% if current_phase %}
+    <div class="alert alert-info text-center fs-5">
+      📌 當前階段：<strong>{{ current_phase.name }}</strong>
+    </div>
+  {% else %}
+    <div class="alert alert-warning text-center fs-5">
+      ⛔ 尚未開啟任何階段
+    </div>
+  {% endif %}
+
+  <form method="get" class="d-flex flex-wrap justify-content-center gap-3 mb-4">
+    <div class="input-group" style="max-width: 250px;">
+      <label class="input-group-text">年級</label>
+      <select name="grade" class="form-select">
+        <option value="">全部</option>
+        <option value="幼兒園" {% if selected_grade == '幼兒園' %}selected{% endif %}>幼兒園</option>
+        <option value="一年級" {% if selected_grade == '一年級' %}selected{% endif %}>一年級</option>
+        <option value="二年級" {% if selected_grade == '二年級' %}selected{% endif %}>二年級</option>
+        <option value="三年級" {% if selected_grade == '三年級' %}selected{% endif %}>三年級</option>
+        <option value="四年級" {% if selected_grade == '四年級' %}selected{% endif %}>四年級</option>
+        <option value="五年級" {% if selected_grade == '五年級' %}selected{% endif %}>五年級</option>
+        <option value="六年級" {% if selected_grade == '六年級' %}selected{% endif %}>六年級</option>
+      </select>
+      <button type="submit" class="btn btn-primary">查詢</button>
+    </div>
+  </form>
+
+  <div class="text-center mb-3 fs-5">
+    <strong>已簽到：</strong> <span class="text-success">{{ signed_in_count }}</span> / <span class="text-primary">{{ total_count }}</span>
+  </div>
+
+  {% if candidates %}
+    <form method="post" action="{{ url_for('admin_checkin.checkin_batch') }}">
+      <div class="table-responsive">
+        <table class="table table-bordered align-middle text-center">
+          <thead class="table-light">
+            <tr>
+              <th scope="col"><input type="checkbox" id="checkAll"></th>
+              <th scope="col">班級</th>
+              <th scope="col">家長姓名</th>
+              <th scope="col">帳號</th>
+              <th scope="col">簽到狀態</th>
+              <th scope="col">操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for c in candidates %}
+              <tr>
+                <td>
+                  {% if not c.is_signed_in %}
+                    <input type="checkbox" name="candidate_ids" value="{{ c.id }}">
+                  {% endif %}
+                </td>
+                <td>{{ c.class_name }}</td>
+                <td>{{ c.parent_name }}</td>
+                <td>{{ c.username }}</td>
+                <td>
+                  {% if c.is_signed_in %}
+                    <span class="badge bg-success">已簽到</span>
+                  {% else %}
+                    <span class="badge bg-secondary">未簽到</span>
+                  {% endif %}
+                </td>
+                <td>
+                  {% if not c.is_signed_in %}
+                    <a href="{{ url_for('admin_checkin.checkin', candidate_id=c.id) }}" class="btn btn-sm btn-outline-success">簽到</a>
+                  {% else %}
+                    <a href="{{ url_for('admin_checkin.uncheckin', candidate_id=c.id) }}" class="btn btn-sm btn-outline-danger">取消</a>
+                  {% endif %}
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <div class="text-center mt-3">
+        <button type="submit" class="btn btn-primary rounded-pill px-4">批次簽到</button>
+      </div>
+    </form>
+  {% else %}
+    <div class="text-center text-muted fs-5">
+      <i class="bi bi-exclamation-circle"></i> 查無資料
+    </div>
+  {% endif %}
+
+  <div class="text-center mt-4">
+    <a href="{{ url_for('admin_dashboard.admin_dashboard') }}" class="btn btn-outline-secondary rounded-pill px-4">← 返回主控台</a>
+  </div>
+
+</div>
+
+<script>
+  document.getElementById('checkAll')?.addEventListener('change', function() {
+    const checkboxes = document.querySelectorAll('input[name="candidate_ids"]');
+    checkboxes.forEach(cb => cb.checked = this.checked);
+  });
+</script>
+
+{% endblock %}

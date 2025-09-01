@@ -1,0 +1,49 @@
+{% extends "layout.html" %}
+{% block title %}候選人名單管理{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+  <h2>候選人名單管理</h2>
+
+  <div class="mb-3">
+    <a href="{{ url_for('admin.admin_dashboard') }}" class="btn btn-secondary">⬅️ 返回管理員主控台</a>
+  </div>
+
+  <div class="d-flex flex-wrap gap-2 mb-4">
+    <a href="{{ url_for('import_candidates') }}" class="btn btn-primary">📥 匯入候選人</a>
+    <a href="{{ url_for('export_candidates') }}" class="btn btn-success">📤 匯出候選人</a>
+    <a href="{{ url_for('admin_add_candidate') }}" class="btn btn-outline-success">➕ 新增候選人</a>
+  </div>
+
+  {% for phase in phases %}
+    <h4 class="mt-4">{{ phase.name }}</h4>
+    <table class="table table-bordered table-hover">
+      <thead class="table-light">
+        <tr>
+          <th>帳號</th>
+          <th>姓名</th>
+          <th>班級</th>
+          <th>家長姓名</th>
+          <th>操作</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for c in candidates_by_phase[phase.id] %}
+        <tr>
+          <td>{{ c.username }}</td>
+          <td>{{ c.name }}</td>
+          <td>{{ c.class_name }}</td>
+          <td>{{ c.parent_name }}</td>
+          <td>
+            <a href="{{ url_for('admin_candidates.admin_edit_candidate', id=c.id) }}" class="btn btn-sm btn-outline-primary">✏️ 編輯</a>
+            <form method="POST" action="{{ url_for('admin_candidates.admin_delete_candidate', id=c.id) }}" style="display:inline;" onsubmit="return confirm('確定要刪除嗎？');">
+              <button type="submit" class="btn btn-sm btn-outline-danger">🗑️ 刪除</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% endfor %}
+</div>
+{% endblock %}

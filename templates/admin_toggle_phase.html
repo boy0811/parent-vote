@@ -1,0 +1,24 @@
+<!-- templates/admin/admin_toggle_phase.html -->
+{% extends "layout.html" %}
+{% block title %}投票階段開關設定{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+  <h2>🔄 投票階段開關設定</h2>
+  <form method="POST">
+    <div class="form-group">
+      {% for phase in phases %}
+      <div class="form-check mb-2">
+        <input class="form-check-input" type="checkbox" id="phase_{{ phase.id }}" name="phase_{{ phase.id }}"
+               {% if phase.is_active %}checked{% endif %}>
+        <label class="form-check-label" for="phase_{{ phase.id }}">
+          階段 {{ phase.name }}（最多投 {{ phase.max_votes }} 票）
+        </label>
+      </div>
+      {% endfor %}
+    </div>
+    <button type="submit" class="btn btn-primary mt-3">💾 儲存設定</button>
+    <a href="{{ url_for('admin.admin_dashboard.admin_dashboard') }}" class="btn btn-secondary mt-3">返回主控台</a>
+  </form>
+</div>
+{% endblock %}

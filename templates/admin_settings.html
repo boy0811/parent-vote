@@ -1,0 +1,142 @@
+{% extends "layout.html" %}
+{% block title %}系統設定{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+
+  <h2 class="mb-5 text-center"><i class="bi bi-gear"></i> 系統設定</h2>
+
+  <form method="POST" action="{{ url_for('admin_settings.admin_settings') }}">
+    <div class="row g-4">
+
+      <!-- 左側：投票頁標題 & 自動刷新秒數 -->
+      <div class="col-md-6">
+        <div class="card shadow rounded-4 p-4 h-100 border-0" style="background-color: #e9f2fb;">
+          <h5 class="mb-4"><i class="bi bi-card-text"></i> 投票頁標題 & 自動刷新秒數</h5>
+
+          <div class="mb-3">
+            <label class="form-label">家長投票完成頁標題（vote_success.html）</label>
+            <textarea name="parent_vote_title" class="form-control rounded-3" rows="2">{{ parent_vote_title }}</textarea>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">前台投票頁主標題（vote.html 顯示）</label>
+            <textarea name="vote_title" class="form-control rounded-3" rows="2">{{ vote_title }}</textarea>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">投票頁自動刷新秒數</label>
+            <input type="number" name="refresh_interval" value="{{ refresh_value }}" class="form-control rounded-3" min="0">
+          </div>
+      
+          <div class="mb-3">
+            <label class="form-label">輪播間隔秒數（slide_interval）</label>
+            <input type="number" class="form-control rounded-3" name="slide_interval" value="{{ slide_interval or 5 }}" min="1">
+          </div>
+        </div>
+      </div>
+
+      <!-- 右側：各階段最大投票數 & 晉級人數 -->
+      <div class="col-md-6">
+        <div class="card shadow rounded-4 p-4 border-0 h-100" style="background-color: #eaf7ea;">
+          <h5 class="mb-4"><i class="bi bi-bullseye"></i> 各階段最大投票數 & 晉級人數</h5>
+
+          <table class="table table-bordered text-center align-middle bg-white rounded-3">
+            <thead class="table-light">
+              <tr>
+                <th>階段名稱</th>
+                <th>每人可投票數</th>
+                <th>晉級人數</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for phase in phases %}
+              <tr>
+                <td>{{ phase.name }}</td>
+                <td>
+                  <input type="number" name="max_votes_{{ phase.id }}" class="form-control text-center rounded-3" value="{{ phase.max_votes }}" min="1">
+                </td>
+                <td>
+                  <input type="number" name="promote_count_{{ phase.id }}" class="form-control text-center rounded-3" value="{{ phase.promote_count }}" min="1">
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- 中層：儲存按鈕 -->
+    <div class="text-center my-5">
+      <button type="submit" class="btn btn-success rounded-pill px-5 py-2 shadow">
+        💾 儲存所有設定
+      </button>
+    </div>
+  </form>
+
+  <!-- 下層三卡片 -->
+  <div class="row g-4 mt-3">
+
+    <!-- 左：立即備份資料庫 -->
+    <div class="col-md-4">
+      <div class="card shadow rounded-4 p-4 border-0 h-100 text-center" style="background-color: #f0f8ff;">
+        <h5 class="mb-4 text-primary"><i class="bi bi-hdd-stack"></i> 立即備份資料庫</h5>
+        <form method="POST" action="{{ url_for('admin_settings.backup_db') }}">
+          <button type="submit" class="btn btn-primary w-100 rounded-pill shadow"
+                  onclick="return confirm('📦 確定要立即備份目前資料庫嗎？將儲存至 backup 資料夾')">
+            📦 備份資料庫
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- 中：投票明細 -->
+    <div class="col-md-4">
+      <div class="card shadow rounded-4 p-4 border-0 h-100 text-center" style="background-color: #f8f9fa;">
+        <h5 class="mb-4"><i class="bi bi-journal-text"></i> 投票明細（誰投給誰）</h5>
+        <a href="{{ url_for('admin_votes.votes_log') }}" class="btn btn-outline-primary w-100 rounded-pill shadow">
+          📜 查看誰投給誰
+        </a>
+      </div>
+    </div>
+
+    <!-- 右：一鍵清除 -->
+    <div class="col-md-4">
+      <div class="card shadow rounded-4 p-4 border-0 h-100 text-center" style="background-color: #fff0f0;">
+        <h5 class="mb-4 text-danger"><i class="bi bi-x-circle"></i> 一鍵清空所有資料（⚠️ 無法復原）</h5>
+        <form id="clearAllForm" method="POST" action="{{ url_for('admin_settings.clear_all_data') }}">
+          <div class="mb-3">
+            <input type="text" id="confirm_delete" name="confirm_delete" class="form-control text-center rounded-3" placeholder="輸入 DELETE 以確認">
+          </div>
+          <button type="submit" class="btn btn-danger w-100 rounded-pill shadow">
+            🧨 一鍵清空所有階段資料
+          </button>
+        </form>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- 返回主控台 -->
+  <div class="text-center mt-5">
+    <a href="{{ url_for('admin_dashboard.admin_dashboard') }}" class="btn btn-outline-secondary rounded-pill px-4">
+      ⬅️ 返回主控台
+    </a>
+  </div>
+
+</div>
+
+<script>
+document.getElementById('clearAllForm').addEventListener('submit', function(e) {
+  const input = document.getElementById('confirm_delete').value.trim();
+  if (input !== 'DELETE') {
+    e.preventDefault();
+    alert('⚠️ 請正確輸入 DELETE 以確認清空所有資料！');
+  } else {
+    return confirm('⚠️ 真的要清除所有候選人與投票紀錄嗎？此操作無法復原！');
+  }
+});
+</script>
+{% endblock %}

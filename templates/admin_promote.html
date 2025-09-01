@@ -1,0 +1,171 @@
+{% extends "layout.html" %}
+{% block title %}同票者晉級處理{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+  <div class="text-center mb-4">
+    <h2>🏆 同票者晉級處理</h2>
+
+    <!-- 階段選單 -->
+    <form method="GET" action="{{ url_for('admin_promote.promote_page') }}" class="mb-3">
+      <label for="phase_id" class="form-label">📌 請選擇階段：</label>
+      <select name="phase_id" id="phase_id" class="form-select w-auto d-inline-block" onchange="this.form.submit()">
+        {% for phase in phases %}
+          <option value="{{ phase.id }}" {% if phase.id == current_phase.id %}selected{% endif %}>
+            {{ phase.name }}
+          </option>
+        {% endfor %}
+      </select>
+    </form>
+
+    <!-- 投票資訊 -->
+    <h5>階段名稱：<strong>{{ current_phase.name }}</strong></h5>
+    <p class="text-muted">
+      預計晉級人數：<strong>{{ promote_count }}</strong>，
+      自動晉級：<strong>{{ auto_promoted|length }}</strong>人，
+      同票待選：<strong>{{ tied_candidates|length }}</strong>人，
+      尚需勾選：<strong>{{ remaining_to_promote }}</strong>人
+    </p>
+    <p class="text-success">
+      ✅ 資料庫目前晉級者數量：<strong>{{ actual_promoted_count }}</strong>
+    </p>
+    <p class="text-primary" id="selectedCountText">已選 0 / {{ remaining_to_promote }} 人</p>
+
+    <!-- 功能按鈕 -->
+    <a href="{{ url_for('admin_promote.export_vote_results', phase_id=current_phase.id) }}"
+       class="btn btn-outline-primary">
+      📄 匯出投票結果（僅此階段）
+    </a>
+
+
+      <a href="{{ url_for('admin_promote.export_promoted_candidates', phase_id=current_phase.id) }}" class="btn btn-outline-success">
+        🏅 匯出當選人名單
+      </a>
+      <a href="{{ url_for('admin_promote.goto_next_phase', phase_id=current_phase.id) }}"
+         class="btn btn-outline-warning">
+        ⏩ 前往下一階段
+      </a>
+
+      <form method="POST" action="{{ url_for('admin_promote.open_phase', phase_id=current_phase.id) }}" class="d-inline">
+        <button type="submit" class="btn btn-success" onclick="return confirm('✅ 確定要開啟本階段投票嗎？')">
+         ✅ 開啟本階段投票
+        </button>
+      </form>
+    </div>
+
+    <!-- ✅ 晉級確認表單（無論有無同票者皆須送出） -->
+    <form method="POST" action="{{ url_for('admin_promote.save_promoted_candidates') }}" id="promoteForm">
+      <input type="hidden" name="phase_id" value="{{ current_phase.id }}">
+
+      {% if tied_candidates %}
+      <div class="row">
+        {% for item in tied_candidates %}
+        <div class="col-md-3 mb-3">
+          <label class="w-100">
+            <input type="checkbox"
+                   name="candidate_ids"
+                   value="{{ item[0].id }}"
+                   class="form-check-input checkbox-candidate d-none"
+                   id="checkbox-{{ item[0].id }}">
+            <div class="card card-candidate text-center p-3"
+                 style="cursor: pointer; border: 2px solid #ccc; transition: 0.2s;">
+              <strong>{{ item[0].class_name }} {{ item[0].parent_name }}</strong>
+              <p class="mb-0">票數：{{ item[1] }}</p>
+              {% if item[0].is_promoted %}
+                <small class="text-muted">
+                  {% if item[0].promote_type == 'auto' %}
+                    （自動晉級）
+                  {% elif item[0].promote_type == 'manual' %}
+                    （手動勾選）
+                  {% endif %}
+                </small>
+              {% endif %}
+            </div>
+          </label>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="alert alert-info text-center">
+        🎉 無同票候選人，已自動完成初步晉級，請點擊下方「確認晉級」儲存至資料庫。
+      </div>
+      {% endif %}
+
+      <div class="alert alert-warning text-center">
+        📌 提醒：<strong>請務必點擊「確認晉級」</strong>，系統才會正式儲存晉級名單，才能進行匯出或帶入下一階段。
+      </div>
+
+      <div class="text-center mt-4">
+        <button type="submit" class="btn btn-success">
+          ✅ 確認晉級（共 {{ promote_count }} 人）
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ✅ 樣式 -->
+<style>
+.card-candidate.selected {
+  background-color: #d3e5ff;
+  border-color: #0d6efd;
+}
+</style>
+
+<!-- ✅ JS -->
+<script>
+function updateSelectedCount() {
+  const checked = document.querySelectorAll('.checkbox-candidate:checked').length;
+  const required = {{ remaining_to_promote }};
+  const countText = document.getElementById("selectedCountText");
+
+  countText.textContent = `已選 ${checked} / ${required} 人`;
+
+  if (checked === required) {
+    countText.classList.remove('text-danger');
+    countText.classList.add('text-success');
+  } else {
+    countText.classList.remove('text-success');
+    countText.classList.add('text-danger');
+  }
+}
+
+// 點擊卡片切換勾選
+document.querySelectorAll('.card-candidate').forEach(card => {
+  card.addEventListener('click', function (e) {
+    e.preventDefault();
+    const checkbox = this.closest('label').querySelector('.checkbox-candidate');
+    checkbox.checked = !checkbox.checked;
+    checkbox.dispatchEvent(new Event('change'));
+  });
+});
+
+// 勾選變色
+document.querySelectorAll('.checkbox-candidate').forEach(cb => {
+  cb.addEventListener('change', function () {
+    const card = this.closest('label').querySelector('.card-candidate');
+    card.classList.toggle('selected', this.checked);
+    updateSelectedCount();
+  });
+});
+
+// 頁面載入時初始化
+window.onload = () => {
+  document.querySelectorAll('.checkbox-candidate:checked').forEach(cb => {
+    cb.closest('label').querySelector('.card-candidate').classList.add('selected');
+  });
+  updateSelectedCount();
+};
+
+// 提交前驗證（僅當有同票者才驗證選取人數）
+document.getElementById("promoteForm")?.addEventListener("submit", function (e) {
+  const tiedExists = {{ 'true' if tied_candidates else 'false' }};
+  const checkedCount = document.querySelectorAll('.checkbox-candidate:checked').length;
+  const required = {{ remaining_to_promote }};
+  if (tiedExists && checkedCount !== required) {
+    alert(`⚠️ 請勾選正確人數：${required} 人，目前選取 ${checkedCount} 人`);
+    e.preventDefault();
+  }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,122 @@
+{% extends "layout.html" %}
+{% block title %}{{ vote_title }}{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+  <div class="text-center mb-4">
+    <h2>{{ vote_title }}</h2>
+    <h5>
+      📌 當前階段：
+      {% if current_phase %}
+        <strong>{{ current_phase.name }}</strong>（晉級 <strong>{{ promote_count }}</strong> 人）
+      {% else %}
+        <span class="text-muted">尚未開始</span>
+      {% endif %}
+    </h5>
+    <p class="text-muted">每 <strong>{{ refresh_interval }}</strong> 秒自動刷新</p>
+  </div>
+
+  <div class="card mb-4">
+    <div class="card-header bg-light">
+      <h5 class="mb-0">📊 即時得票統計</h5>
+    </div>
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-bordered table-striped align-middle fs-5 mb-0">
+          <thead class="table-dark text-center">
+            <tr>
+              <th>序號</th>
+              <th>班級</th>
+              <th>家長姓名</th>
+              <th>得票數</th>
+            </tr>
+          </thead>
+          <tbody class="text-center">
+            {% for c in results %}
+            <tr class="vote-row">
+              <td>{{ c.rank_number }}</td>
+              <td>{{ c.class_name }}</td>
+              <td>{{ c.parent_name }}</td>
+              <td><span class="vote-count" data-id="{{ c.id }}">{{ c.vote_count }}</span></td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <p id="errorMessage" class="text-center text-danger mt-3" style="display:none;">⚠️ 資料讀取失敗</p>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const REFRESH_INTERVAL = {{ refresh_interval * 1000 }};
+const API_URL = "{{ url_for('public_votes.public_votes_api') }}";
+
+function animateCount(element, newCount) {
+  const current = parseInt(element.innerText) || 0;
+  if (current === newCount) return;
+
+  element.classList.add("highlight-vote");
+  setTimeout(() => element.classList.remove("highlight-vote"), 600);
+
+  const duration = 300;
+  const frameRate = 30;
+  const totalFrames = Math.round(duration / (1000 / frameRate));
+  let frame = 0;
+  const increment = (newCount - current) / totalFrames;
+
+  function update() {
+    frame++;
+    const value = current + increment * frame;
+    element.innerText = Math.round(value);
+    if (frame < totalFrames) requestAnimationFrame(update);
+    else element.innerText = newCount;
+  }
+
+  update();
+}
+
+function fetchVoteData() {
+  fetch(API_URL)
+    .then(res => res.json())
+    .then(data => {
+      const voteMap = {};
+      data.candidates.forEach(c => {
+        voteMap[c.id] = c.votes;
+      });
+
+      document.querySelectorAll('.vote-count').forEach(span => {
+        const id = span.dataset.id;
+        if (voteMap.hasOwnProperty(id)) {
+          animateCount(span, voteMap[id]);
+        }
+      });
+
+      document.getElementById('errorMessage').style.display = 'none';
+    })
+    .catch(err => {
+      console.error('讀取失敗:', err);
+      document.getElementById('errorMessage').style.display = 'block';
+    });
+}
+
+setInterval(fetchVoteData, REFRESH_INTERVAL);
+fetchVoteData();
+</script>
+
+<style>
+.highlight-vote {
+  animation: popScale 0.6s ease-in-out;
+  color: #084298;
+  font-weight: bold;
+}
+@keyframes popScale {
+  0% { transform: scale(1); background-color: #cfe2ff; }
+  50% { transform: scale(1.3); background-color: #9ec5fe; }
+  100% { transform: scale(1); background-color: transparent; }
+}
+</style>
+{% endblock %}

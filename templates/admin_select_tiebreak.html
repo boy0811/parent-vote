@@ -1,0 +1,55 @@
+{% extends "layout.html" %}
+{% block title %}處理同票候選人{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+  <h2 class="mb-4 text-center">🔘 處理同票候選人</h2>
+
+  <div class="card shadow rounded-4 col-md-10 col-lg-8 mx-auto p-4">
+
+    <div class="alert alert-info rounded-3">
+      <p>👉 目前已晉級 <strong>{{ already_promoted }}</strong> 人，剩餘名額 <strong>{{ remaining_slots }}</strong> 位。</p>
+      <p>請從下方<strong>同票名單</strong>中選出最多 <strong>{{ remaining_slots }}</strong> 位候選人，然後點擊確認。</p>
+    </div>
+
+    <form method="post" action="{{ url_for('admin_candidates.admin_select_tiebreak') }}">
+      <div class="row g-3 mb-4">
+        {% for candidate in tied_candidates %}
+          <div class="col-12 col-md-6">
+            <label class="btn btn-outline-primary w-100 rounded-pill py-3">
+              <input type="checkbox" name="selected_candidates" value="{{ candidate.id }}" class="d-none vote-checkbox">
+              <div>
+                <strong>{{ candidate.name }}</strong><br>
+                <small>班級：{{ candidate.class_name }}／家長：{{ candidate.parent_name }}／得票：{{ candidate.vote_count }}</small>
+              </div>
+            </label>
+          </div>
+        {% else %}
+          <div class="text-muted text-center p-3">目前沒有同票候選人</div>
+        {% endfor %}
+      </div>
+
+      <div class="d-grid gap-3">
+        <button type="submit" class="btn btn-primary btn-lg rounded-pill">✅ 確認晉級名單</button>
+        <a href="{{ url_for('admin_dashboard.admin_dashboard') }}" class="btn btn-outline-secondary btn-lg rounded-pill">↩️ 返回主控台</a>
+      </div>
+    </form>
+
+  </div>
+</div>
+
+<script>
+  const maxSelect = {{ remaining_slots }};
+  const checkboxes = document.querySelectorAll('.vote-checkbox');
+
+  checkboxes.forEach(cb => {
+    cb.addEventListener('change', () => {
+      const selected = document.querySelectorAll('.vote-checkbox:checked');
+      if (selected.length > maxSelect) {
+        cb.checked = false;
+        alert(`⚠️ 最多只能選擇 ${maxSelect} 位候選人`);
+      }
+    });
+  });
+</script>
+{% endblock %}

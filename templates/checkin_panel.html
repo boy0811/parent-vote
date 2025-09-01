@@ -1,0 +1,124 @@
+{% extends "layout.html" %}
+{% block title %}簽到面板{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+  <h2 class="text-center mb-4">📲 家長簽到面板</h2>
+
+  <!-- ✅ 顯示當前階段 -->
+  {% if selected_phase_id %}
+    <div class="alert alert-info text-center fs-5">
+      📌 當前階段： 
+      {% for phase in phases %}
+        {% if phase.id == selected_phase_id|int %}
+          <strong>{{ phase.name }}</strong>
+        {% endif %}
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="alert alert-warning text-center fs-5">
+      ⛔ 尚未選擇階段
+    </div>
+  {% endif %}
+
+  <!-- ✅ 年級篩選 -->
+  <form method="get" class="d-flex flex-wrap justify-content-center gap-3 mb-4">
+    <input type="hidden" name="phase_id" value="{{ selected_phase_id }}">
+    <div class="input-group" style="max-width: 250px;">
+      <label class="input-group-text">年級</label>
+      <select name="grade" class="form-select">
+        <option value="">全部</option>
+        <option value="幼兒園" {% if selected_grade == '幼兒園' %}selected{% endif %}>幼兒園</option>
+        <option value="一年級" {% if selected_grade == '一年級' %}selected{% endif %}>一年級</option>
+        <option value="二年級" {% if selected_grade == '二年級' %}selected{% endif %}>二年級</option>
+        <option value="三年級" {% if selected_grade == '三年級' %}selected{% endif %}>三年級</option>
+        <option value="四年級" {% if selected_grade == '四年級' %}selected{% endif %}>四年級</option>
+        <option value="五年級" {% if selected_grade == '五年級' %}selected{% endif %}>五年級</option>
+        <option value="六年級" {% if selected_grade == '六年級' %}selected{% endif %}>六年級</option>
+      </select>
+    </div>
+    <button type="submit" class="btn btn-outline-primary">查詢</button>
+  </form>
+
+  <div class="row g-3">
+    {% for c in candidates %}
+    <div class="col-lg-3 col-md-4 col-sm-6">
+      <div class="card shadow-sm rounded-4 p-3 text-center {% if c.is_signed_in %}bg-success text-white{% else %}bg-light{% endif %}">
+        <h5 class="fw-bold">{{ c.class_name }}</h5>
+        <p>{{ c.parent_name }}</p>
+
+        {% if c.phase_id in [2,3] %}
+          {% if not c.is_signed_in %}
+            <button class="btn btn-outline-success rounded-pill mt-2" onclick="signIn({{ c.id }}, this)">✔️ 簽到</button>
+          {% else %}
+            <button class="btn btn-outline-light rounded-pill mt-2" onclick="unSignIn({{ c.id }}, this)">❌ 取消</button>
+          {% endif %}
+        {% endif %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <div class="text-center mt-4">
+    <a href="{{ url_for('admin_dashboard.admin_dashboard') }}" class="btn btn-outline-secondary rounded-pill px-4 py-2">← 返回主控台</a>
+  </div>
+</div>
+
+<script>
+function signIn(candidateId, button) {
+  if (!confirm('確定要簽到嗎？')) return;
+  button.disabled = true;
+  button.innerHTML = '<span class="spinner-border spinner-border-sm"></span> 簽到中...';
+
+  fetch(`/checkin_panel/signin/${candidateId}`, {method: 'POST'})
+    .then(res => res.json())
+    .then(data => {
+      if (data.status === 'success') {
+        const card = button.closest('.card');
+        const className = card.querySelector('h5').innerText;
+        const parentName = card.querySelector('p').innerText;
+
+        card.classList.remove('bg-light');
+        card.classList.add('bg-success', 'text-white');
+        card.innerHTML = `
+          <h5 class="fw-bold">${className}</h5>
+          <p>${parentName}</p>
+          <button class="btn btn-outline-light rounded-pill mt-2" onclick="unSignIn(${candidateId}, this)">❌ 取消</button>
+        `;
+      } else {
+        alert('簽到失敗');
+        button.disabled = false;
+        button.innerText = '✔️ 簽到';
+      }
+    });
+}
+
+function unSignIn(candidateId, button) {
+  if (!confirm('確定要取消簽到嗎？')) return;
+  button.disabled = true;
+  button.innerHTML = '<span class="spinner-border spinner-border-sm"></span> 取消中...';
+
+  fetch(`/checkin_panel/uncheckin/${candidateId}`, {method: 'POST'})
+    .then(res => res.json())
+    .then(data => {
+      if (data.status === 'success') {
+        const card = button.closest('.card');
+        const className = card.querySelector('h5').innerText;
+        const parentName = card.querySelector('p').innerText;
+
+        card.classList.remove('bg-success', 'text-white');
+        card.classList.add('bg-light');
+        card.innerHTML = `
+          <h5 class="fw-bold">${className}</h5>
+          <p>${parentName}</p>
+          <button class="btn btn-outline-success rounded-pill mt-2" onclick="signIn(${candidateId}, this)">✔️ 簽到</button>
+        `;
+      } else {
+        alert('取消失敗');
+        button.disabled = false;
+        button.innerText = '❌ 取消';
+      }
+    });
+}
+</script>
+{% endblock %}

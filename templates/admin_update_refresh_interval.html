@@ -1,0 +1,16 @@
+{% extends "layout.html" %}
+{% block title %}投票頁刷新秒數設定{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+  <h2>⏱️ 投票頁刷新秒數設定</h2>
+  <form method="post">
+    <div class="mb-3">
+      <label for="value" class="form-label">刷新秒數（例如：10）</label>
+      <input type="number" class="form-control" id="value" name="value" value="{{ refresh_interval }}" required>
+    </div>
+    <button type="submit" class="btn btn-primary">儲存設定</button>
+    <a href="{{ url_for('admin_settings.admin_settings') }}" class="btn btn-secondary">返回</a>
+  </form>
+</div>
+{% endblock %}

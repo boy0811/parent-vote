@@ -1,0 +1,44 @@
+{% extends "layout.html" %}
+{% block title %}所有晉級者名單{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+  <div class="text-center mb-4">
+    <h2>🏅 所有晉級者名單</h2>
+    <p class="text-muted">共 {{ candidates|length }} 位晉級者</p>
+
+    <a href="{{ url_for('admin_promote.export_all_promoted_candidates') }}" class="btn btn-success mb-3">
+      📤 匯出 Excel
+    </a>
+  </div>
+
+  <table class="table table-bordered table-striped">
+    <thead>
+      <tr class="table-secondary text-center">
+        <th>階段 ID</th>
+        <th>班級</th>
+        <th>家長姓名</th>
+        <th>晉級方式</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for c in candidates %}
+      <tr class="text-center">
+        <td>{{ c.phase_id }}</td>
+        <td>{{ c.class_name }}</td>
+        <td>{{ c.parent_name }}</td>
+        <td>
+          {% if c.promote_type == 'auto' %}
+            自動晉級
+          {% elif c.promote_type == 'manual' %}
+            手動勾選
+          {% else %}
+            -
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

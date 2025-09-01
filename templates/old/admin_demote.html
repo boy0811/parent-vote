@@ -1,0 +1,61 @@
+{% extends "layout.html" %}
+{% block title %}候選人名單管理{% endblock %}
+
+{% block content %}
+<h2>候選人名單管理</h2>
+<a href="{{ url_for('admin.admin_dashboard') }}" class="btn btn-secondary mb-3">🔙 返回管理員主控台</a>
+
+<!-- 匯入/匯出按鈕 -->
+<div class="mb-3 d-flex gap-2">
+  <a href="{{ url_for('admin_candidates.import_candidates') }}" class="btn btn-primary">📥 匯入候選人</a>
+  <a href="{{ url_for('admin_candidates.export_candidates') }}" class="btn btn-success">📤 匯出候選人</a>
+</div>
+
+{% for phase in phases %}
+<div class="card mb-4">
+  <div class="card-header bg-light">
+    <h5 class="mb-0">📈 階段 {{ phase.name }}</h5>
+  </div>
+  <div class="card-body p-0">
+    <table class="table table-bordered table-hover align-middle text-center mb-0">
+      <thead class="table-light">
+        <tr>
+          <th>#</th>
+          <th>🆔 帳號</th>
+          <th>📛 學生姓名</th>
+          <th>🏫 班級</th>
+          <th>👨‍👩‍👧 家長姓名</th>
+          <th>⚙️ 操作</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for c in candidates_by_phase[phase.id] %}
+        <tr>
+          <td>{{ loop.index }}</td>
+          <td>{{ c.username }}</td>
+          <td>{{ c.name or '—' }}</td>
+          <td>{{ c.class_name or '—' }}</td>
+          <td>{{ c.parent_name or '—' }}</td>
+          <td>
+            <div class="d-flex justify-content-center gap-2">
+              <a href="{{ url_for('admin_candidates.admin_edit_candidate', id=c.id) }}" class="btn btn-sm btn-warning">✏️ 編輯</a>
+              <form method="POST" action="{{ url_for('admin_candidates.admin_delete_candidate', id=c.id) }}" onsubmit="return confirm('確定要刪除這位候選人嗎？')">
+                <button type="submit" class="btn btn-sm btn-danger">🗑️ 刪除</button>
+              </form>
+              {% if c.phase_id > 1 %}
+              <form method="POST" action="{{ url_for('admin_candidates.admin_demote_one', candidate_id=c.id) }}" onsubmit="return confirm('確定要降階此候選人嗎？')">
+                <button type="submit" class="btn btn-sm btn-outline-secondary">⏬ 降階</button>
+              </form>
+              {% endif %}
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endfor %}
+
+<a href="{{ url_for('admin_candidates.admin_add_candidate') }}" class="btn btn-success mt-3">➕ 新增候選人</a>
+{% endblock %}

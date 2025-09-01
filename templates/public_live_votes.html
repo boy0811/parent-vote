@@ -1,0 +1,121 @@
+{% extends "layout.html" %}
+
+{% block title %}{{ vote_title }}{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+
+  <div class="text-center mb-4">
+    <h2>{{ vote_title }}</h2>
+    <h5>
+      📌 當前階段：
+      {% if current_phase %}
+        <strong>{{ current_phase.name }}</strong>
+      {% else %}
+        <span class="text-muted">尚未開始</span>
+      {% endif %}
+    </h5>
+  </div>
+
+  {% if grouped_candidates %}
+    <ul class="nav nav-pills mb-4 justify-content-center flex-wrap" id="gradeTabs">
+      {% for grade in grouped_candidates.keys() %}
+        <li class="nav-item mb-2">
+          <button class="nav-link {% if loop.first %}active{% endif %}" onclick="showGrade('{{ grade }}', this)">{{ grade }}</button>
+        </li>
+      {% endfor %}
+    </ul>
+
+    <div>
+      {% for grade, candidates in grouped_candidates.items() %}
+        <div class="grade-group" id="grade-{{ grade }}" style="{% if not loop.first %}display:none{% endif %}">
+          <h5 class="mb-3 text-center">{{ grade }}</h5>
+          <div class="row row-cols-2 row-cols-md-4 row-cols-lg-5 g-3">
+            {% for candidate in candidates %}
+              <div class="col">
+                <div class="card shadow-sm rounded-3 text-center p-3">
+                  <div class="small text-muted">{{ candidate.class_name }} {{ candidate.parent_name }}</div>
+                  <div class="fw-bold fs-4" id="vote-{{ candidate.id }}">{{ vote_counts.get(candidate.id, 0) }}</div>
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+
+  {% else %}
+    <div class="alert alert-warning text-center">目前無投票資料。</div>
+  {% endif %}
+
+  <div class="text-center mt-5 mb-3">
+    <button class="btn btn-outline-secondary rounded-pill me-2" onclick="prevGrade()">⬅ 上一頁</button>
+    <button class="btn btn-outline-primary rounded-pill me-2" onclick="toggleAutoPlay()" id="autoplayBtn">▶ 自動播放</button>
+    <button class="btn btn-outline-secondary rounded-pill" onclick="nextGrade()">下一頁 ➡</button>
+  </div>
+
+  <p class="mt-4 text-center text-muted">© 文化國小投票系統</p>
+
+</div>
+
+<script>
+  let currentIndex = 0;
+  let gradeTabs = [];
+  let autoPlayInterval = null;
+
+  function initGrades() {
+    gradeTabs = Array.from(document.querySelectorAll('#gradeTabs button'));
+  }
+
+  function showGrade(grade, btn = null) {
+    document.querySelectorAll('.grade-group').forEach(div => div.style.display = 'none');
+    document.getElementById('grade-' + grade).style.display = 'block';
+    gradeTabs.forEach(b => b.classList.remove('active'));
+    if (btn) {
+      btn.classList.add('active');
+      currentIndex = gradeTabs.indexOf(btn);
+    }
+  }
+
+  function prevGrade() {
+    currentIndex = (currentIndex - 1 + gradeTabs.length) % gradeTabs.length;
+    gradeTabs[currentIndex].click();
+  }
+
+  function nextGrade() {
+    currentIndex = (currentIndex + 1) % gradeTabs.length;
+    gradeTabs[currentIndex].click();
+  }
+
+  function toggleAutoPlay() {
+    const btn = document.getElementById('autoplayBtn');
+    if (autoPlayInterval) {
+      clearInterval(autoPlayInterval);
+      autoPlayInterval = null;
+      btn.innerText = '▶ 自動播放';
+    } else {
+      autoPlayInterval = setInterval(nextGrade, 3000);
+      btn.innerText = '⏸ 停止播放';
+    }
+  }
+
+  function fetchVotes() {
+    fetch('/public/api/votes')
+      .then(response => response.json())
+      .then(data => {
+        data.candidates.forEach(c => {
+          const elem = document.getElementById('vote-' + c.id);
+          if (elem) {
+            elem.innerText = c.votes;
+          }
+        });
+      });
+  }
+
+  window.onload = function() {
+    initGrades();
+    setInterval(fetchVotes, {{ refresh_interval * 1000 }});
+  }
+</script>
+
+{% endblock %}

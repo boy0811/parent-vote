@@ -1,0 +1,61 @@
+{% extends "layout.html" %}
+{% block title %}教職員名單管理{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+  <div class="card shadow-sm mx-auto" style="max-width: 900px; border-radius: 1rem;">
+    <div class="card-header bg-warning text-dark text-center" style="border-radius: 1rem 1rem 0 0;">
+      <h4 class="mb-0">🧑‍🏫 教職員名單管理</h4>
+    </div>
+    <div class="card-body p-4">
+
+      <!-- 操作按鈕 -->
+      <div class="mb-3 d-flex gap-2">
+        <a href="{{ url_for('staff.admin_add_staff') }}" class="btn btn-primary">
+          ➕ 新增教職員
+        </a>
+        <a href="{{ url_for('staff.import_staffs') }}" class="btn btn-secondary">
+          📥 匯入名單
+        </a>
+        <a href="{{ url_for('staff.export_staffs') }}" class="btn btn-success">
+          📤 匯出名單
+        </a>
+      </div>
+
+      <!-- 教職員名單表格 -->
+      <div class="table-responsive">
+        <table class="table table-bordered table-hover align-middle text-center">
+          <thead class="table-light">
+            <tr>
+              <th style="width: 20%">帳號</th>
+              <th style="width: 20%">姓名</th>
+              <th style="width: 20%">班級</th>
+              <th style="width: 20%">操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for staff in staffs %}
+            <tr>
+              <td>{{ staff.username }}</td>
+              <td>{{ staff.name }}</td>
+              <td>{{ staff.class_name }}</td>
+              <td>
+                <a href="{{ url_for('staff.admin_edit_staff', id=staff.id) }}" class="btn btn-sm btn-warning">✏️ 編輯</a>
+                <form action="{{ url_for('staff.admin_delete_staff', id=staff.id) }}" method="POST" class="d-inline">
+                  <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('確定要刪除這位教職員嗎？')">🗑️ 刪除</button>
+                </form>
+              </td>
+            </tr>
+            {% else %}
+            <tr>
+              <td colspan="4" class="text-center text-muted">目前尚無教職員資料</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+    </div>
+  </div>
+</div>
+{% endblock %}

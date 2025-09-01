@@ -1,0 +1,26 @@
+{% extends "layout.html" %}
+{% block title %}匯入候選人名單{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+  <h2 class="mb-4">📥 匯入候選人名單</h2>
+
+  <p>請上傳 <strong>Excel 檔案（.xlsx）</strong>，包含候選人帳號、密碼、家長姓名與班級。</p>
+  <p>建議欄位順序：<code>帳號（username）、密碼、家長姓名、班級</code></p>
+
+  <!-- 範例檔下載 -->
+  <div class="mb-3">
+    <a href="{{ url_for('static', filename='candidate_template.xlsx') }}" class="btn btn-link">📄 下載匯入範例檔</a>
+  </div>
+
+  <!-- 上傳表單 -->
+  <form method="POST" action="{{ url_for('admin_import_candidates') }}" enctype="multipart/form-data">
+    <div class="mb-3">
+      <label for="file" class="form-label">選擇 Excel 檔案</label>
+      <input class="form-control" type="file" name="file" id="file" accept=".xlsx" required>
+    </div>
+    <button type="submit" class="btn btn-success">✅ 匯入</button>
+    <a href="{{ url_for('admin_candidates') }}" class="btn btn-secondary">返回候選人名單</a>
+  </form>
+</div>
+{% endblock %}

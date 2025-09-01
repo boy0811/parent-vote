@@ -1,0 +1,23 @@
+{% extends "layout.html" %}
+{% block title %}編輯教職員投票標題與說明{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+  <h2 class="mb-4">📝 編輯教職員投票標題與說明</h2>
+
+  <form method="POST">
+    <div class="mb-3">
+      <label for="title" class="form-label">投票標題</label>
+      <input type="text" class="form-control" id="title" name="title" value="{{ current_title or '' }}" required>
+    </div>
+
+    <div class="mb-3">
+      <label for="description" class="form-label">投票說明</label>
+      <textarea class="form-control" id="description" name="description" rows="4" required>{{ current_description or '' }}</textarea>
+    </div>
+
+    <button type="submit" class="btn btn-primary">💾 儲存</button>
+    <a href="{{ url_for('admin.admin_settings') }}" class="btn btn-secondary">取消</a>
+  </form>
+</div>
+{% endblock %}

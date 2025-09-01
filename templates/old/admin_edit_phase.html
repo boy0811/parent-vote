@@ -1,0 +1,16 @@
+{% extends "layout.html" %}
+{% block title %}編輯投票階段{% endblock %}
+
+{% block content %}
+<h3 class="mb-4">🛠️ 編輯投票階段：{{ phase.name }}</h3>
+
+<form method="POST">
+  <div class="mb-3">
+    <label for="max_votes" class="form-label">每人最多可投幾票：</label>
+    <input type="number" class="form-control" id="max_votes" name="max_votes" value="{{ phase.max_votes }}" min="1" required>
+  </div>
+
+  <button type="submit" class="btn btn-success">💾 更新</button>
+  <a href="{{ url_for('admin_dashboard') }}" class="btn btn-secondary">返回主控台</a>
+</form>
+{% endblock %}

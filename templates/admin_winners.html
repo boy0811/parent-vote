@@ -1,0 +1,61 @@
+{% extends "layout.html" %}
+{% block title %}{{ vote_title or "得票結果" }}{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+  <div class="text-center mb-4">
+    <h2>{{ vote_title or "🎖 得票結果" }}</h2>
+    <h5>
+      📌 當前階段：
+      {% if current_phase %}
+        <strong>{{ current_phase.name }}</strong>（晉級 <strong>{{ promote_count }}</strong> 人）
+      {% else %}
+        <span class="text-muted">尚未開始</span>
+      {% endif %}
+    </h5>
+  </div>
+
+  <div class="table-responsive">
+    <table class="table table-bordered table-hover align-middle text-center">
+      <thead class="table-dark">
+        <tr>
+          <th>名次</th>
+          <th>班級</th>
+          <th>家長姓名</th>
+          <th>得票數</th>
+          <th>晉級狀態</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for c in candidates %}
+        <tr
+          {% if c.status == 'manual_promoted' %}
+            class="table-info"
+          {% elif c.status == 'tied' %}
+            class="table-danger"
+          {% elif c.status == 'not_promoted' %}
+            class="table-light"
+          {% endif %}
+        >
+          <td>{{ c.rank }}</td>
+          <td>{{ c.class_name or '-' }}</td>
+          <td>{{ c.parent_name }}</td>
+          <td>{{ c.vote_count or 0 }}</td>
+          <td>
+            {% if c.status == 'promoted' %}
+              <span class="badge bg-success-subtle text-success border border-success">🟢 晉級</span>
+            {% elif c.status == 'manual_promoted' %}
+              <span class="badge bg-info text-dark">🟢 晉級</span>
+            {% elif c.status == 'tied' %}
+              <span class="badge bg-danger">⚠️ 同票：請手動選擇</span>
+            {% else %}
+              <span class="badge bg-secondary">❌ 未晉級</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

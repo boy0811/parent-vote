@@ -1,0 +1,54 @@
+{% extends "layout.html" %}
+{% block title %}候選人主頁{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+  <div class="row justify-content-center">
+    <div class="col-md-8">
+
+      <!-- 📦 資訊卡片 -->
+      <div class="card shadow rounded-4 border-0">
+        <div class="card-body text-center">
+          <img src="{{ url_for('static', filename='wenhuah-logo.png') }}" alt="Logo" width="80" class="mb-3">
+          <h3 class="card-title mb-3">🎓 歡迎 {{ candidate.parent_name }} 家長</h3>
+          <p class="card-text text-muted">
+            👦 學生姓名：<strong>{{ candidate.name }}</strong><br>
+            🏫 班級：<strong>{{ candidate.class_name }}</strong><br>
+            📌 當前階段：<strong>{{ current_phase.name if current_phase else "尚未開始" }}</strong>
+          </p>
+
+          {% if current_phase %}
+            {% if current_phase.id != first_phase_id and not promoted %}
+              <!-- ❌ 未晉級 -->
+              <div class="alert alert-warning mt-4">
+                ❌ 很抱歉，您未晉級本階段（{{ current_phase.name }}），無法參與投票。
+              </div>
+            {% elif needs_checkin %}
+              <!-- 📝 已晉級但未簽到 -->
+              <div class="alert alert-info mt-4">
+                📝 您已晉級本階段，但尚未完成簽到。<br>
+                👉 請先至報到處找老師簽到後才能投票。
+              </div>
+            {% endif %}
+          {% else %}
+            <div class="alert alert-info mt-4">尚未開始投票。</div>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- 🟩 按鈕區塊 -->
+      <div class="text-center mt-4">
+        {% if current_phase and can_vote %}
+          <a href="{{ url_for('auth.vote') }}" class="btn btn-success btn-lg shadow rounded-pill me-2">
+            🗳 立即進入投票
+          </a>
+        {% endif %}
+        <a href="{{ url_for('auth.login') }}" class="btn btn-outline-secondary btn-lg rounded-pill">
+          🔐 登出
+        </a>
+      </div>
+
+    </div>
+  </div>
+</div>
+{% endblock %}

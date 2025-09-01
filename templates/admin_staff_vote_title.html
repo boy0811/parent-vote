@@ -1,0 +1,25 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="container mt-5">
+    <h2 class="text-center mb-4">📝 教職員投票標題設定</h2>
+
+    <div class="card shadow rounded-4 mx-auto" style="max-width: 600px;">
+        <div class="card-body">
+            <form method="POST">
+
+                <div class="mb-3">
+                    <label for="title" class="form-label">教職員投票標題</label>
+                    <textarea id="title" name="title" class="form-control rounded-3 p-3 text-center fs-5" rows="2" placeholder="請輸入投票標題">{{ title }}</textarea>
+                </div>
+
+                <div class="d-grid gap-2">
+                    <button type="submit" class="btn btn-primary btn-lg rounded-pill">💾 儲存標題</button>
+                    <a href="{{ url_for('admin_dashboard.admin_dashboard') }}" class="btn btn-outline-secondary btn-lg rounded-pill">⬅️ 返回主控台</a>
+                </div>
+
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
