@@ -11,7 +11,7 @@ class Candidate(db.Model):
     __tablename__ = 'candidate'
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(50), nullable=False)  # 移除 unique=True
-    password_hash = db.Column(db.String(128), nullable=False)
+    password_hash = db.Column(db.String(512), nullable=False)
     name = db.Column(db.String(50), nullable=False)
     class_name = db.Column(db.String(50), nullable=True)
     parent_name = db.Column(db.String(50), nullable=True)
@@ -87,7 +87,7 @@ class Admin(db.Model):
 class Staff(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(50), unique=True, nullable=False)
-    password_hash = db.Column(db.String(128), nullable=False)
+    password_hash = db.Column(db.String(512), nullable=False)
     name = db.Column(db.String(50), nullable=False)
     class_name = db.Column(db.String(50), nullable=True)
 
