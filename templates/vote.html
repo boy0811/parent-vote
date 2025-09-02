@@ -19,7 +19,7 @@
       </div>
       {% if phase %}
       <p class="text-muted mt-2">
-        請選擇且投滿 <strong>{{ max_votes }}</strong> 位候選人。
+        請選擇 <strong>1</strong> ~ <strong>{{ max_votes }}</strong> 位候選人。
       </p>
       {% endif %}
     </div>
@@ -90,7 +90,6 @@
 
 <script>
   const maxVotes = {{ max_votes }};
-  const minVotes = maxVotes; // 必須投滿最多票數
   console.log('maxVotes:', maxVotes);
 
   document.addEventListener('DOMContentLoaded', () => {
@@ -116,11 +115,11 @@
   function validateVote() {
     const checkedBoxes = document.querySelectorAll('.vote-checkbox:checked');
     console.log('validateVote checkedBoxes.length:', checkedBoxes.length);
-    if (checkedBoxes.length !== maxVotes) {
-      alert(`請選擇且投滿 ${maxVotes} 位候選人`);
+    if (checkedBoxes.length === 0) {
+      alert("⚠️ 請至少選擇 1 位候選人");
       return false;
     }
-    return true;
+    return true; // ✅ 允許 1 ~ maxVotes
   }
 </script>
 {% endblock %}
