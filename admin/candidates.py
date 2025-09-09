@@ -10,6 +10,7 @@ admin_candidates_bp = Blueprint('admin_candidates', __name__, url_prefix='/admin
 
 
 # ✅ 匯入候選人
+# ✅ 匯入候選人
 @admin_candidates_bp.route('/candidates/import', methods=['GET', 'POST'], endpoint='admin_import_candidates')
 def import_candidates():
     if 'admin' not in session:
@@ -22,8 +23,12 @@ def import_candidates():
             return redirect(url_for('admin_candidates.admin_import_candidates'))
 
         try:
-            # 讀檔：都轉成字串、去空白，避免 None/NaN
-            df = pd.read_excel(file, dtype=str).fillna('')
+            # 根據副檔名選擇讀檔方式
+            ext = file.filename.lower().split('.')[-1]
+            if ext == "csv":
+                df = pd.read_csv(file, dtype=str).fillna("")
+            else:
+                df = pd.read_excel(file, dtype=str, engine="openpyxl").fillna("")
         except Exception as e:
             flash(f'❌ 讀取檔案失敗：{e}', 'danger')
             return redirect(url_for('admin_candidates.admin_import_candidates'))
@@ -57,17 +62,17 @@ def import_candidates():
                 cand = Candidate.query.filter_by(username=username, phase_id=first_phase_id).first()
 
                 if cand:
-                    # 你可以選擇「略過」或「更新」
-                    # 這裡示範更新基本資料（可自行改為略過）
+                    # 已存在 → 更新資料
                     cand.name = parent_name
                     cand.parent_name = parent_name
                     cand.class_name = class_name
                     cand.set_password(password)
                     updated += 1
                 else:
+                    # 不存在 → 新增
                     cand = Candidate(
                         username=username,
-                        name=parent_name,       # 你的系統是 name == parent_name
+                        name=parent_name,
                         parent_name=parent_name,
                         class_name=class_name,
                         phase_id=first_phase_id
@@ -80,7 +85,7 @@ def import_candidates():
             flash(f'✅ 匯入完成：新增 {created} 筆、更新 {updated} 筆、略過 {skipped} 筆', 'success')
 
         except Exception as e:
-            db.session.rollback()  # 很重要！
+            db.session.rollback()
             flash(f'❌ 匯入失敗並已回滾：{e}', 'danger')
 
         return redirect(url_for('admin_candidates.admin_import_candidates'))
