@@ -163,10 +163,18 @@ def admin_delete_candidates():
 
     ids = request.form.getlist('candidate_ids')
     if ids:
-        Vote.query.filter(Vote.candidate_id.in_(ids)).delete(synchronize_session=False)
-        Candidate.query.filter(Candidate.id.in_(ids)).delete(synchronize_session=False)
-        db.session.commit()
-        flash(f'✅ 已成功刪除 {len(ids)} 位候選人及其票數', 'success')
+        try:
+            # 轉成整數，避免型別不匹配
+            ids = [int(i) for i in ids]
+
+            Vote.query.filter(Vote.candidate_id.in_(ids)).delete(synchronize_session=False)
+            Candidate.query.filter(Candidate.id.in_(ids)).delete(synchronize_session=False)
+            db.session.commit()
+
+            flash(f'✅ 已成功刪除 {len(ids)} 位候選人及其票數', 'success')
+        except ValueError:
+            flash('❌ 候選人 ID 格式錯誤', 'danger')
+            db.session.rollback()
     else:
         flash('⚠️ 請選擇要刪除的候選人', 'warning')
 
