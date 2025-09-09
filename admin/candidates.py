@@ -29,6 +29,7 @@ def import_candidates():
                 try:
                     df = pd.read_csv(file, dtype=str, encoding="utf-8").fillna("")
                 except UnicodeDecodeError:
+                    file.seek(0)  # 🔑 重置游標再讀一次
                     df = pd.read_csv(file, dtype=str, encoding="big5").fillna("")
             else:
                 df = pd.read_excel(file, dtype=str, engine="openpyxl").fillna("")
