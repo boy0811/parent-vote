@@ -10,7 +10,6 @@ admin_candidates_bp = Blueprint('admin_candidates', __name__, url_prefix='/admin
 
 
 # ✅ 匯入候選人
-# ✅ 匯入候選人
 @admin_candidates_bp.route('/candidates/import', methods=['GET', 'POST'], endpoint='admin_import_candidates')
 def import_candidates():
     if 'admin' not in session:
@@ -23,10 +22,14 @@ def import_candidates():
             return redirect(url_for('admin_candidates.admin_import_candidates'))
 
         try:
-            # 根據副檔名選擇讀檔方式
+            # 根據副檔名決定讀取方式
             ext = file.filename.lower().split('.')[-1]
+
             if ext == "csv":
-                df = pd.read_csv(file, dtype=str).fillna("")
+                try:
+                    df = pd.read_csv(file, dtype=str, encoding="utf-8").fillna("")
+                except UnicodeDecodeError:
+                    df = pd.read_csv(file, dtype=str, encoding="big5").fillna("")
             else:
                 df = pd.read_excel(file, dtype=str, engine="openpyxl").fillna("")
         except Exception as e:
@@ -40,7 +43,7 @@ def import_candidates():
             flash(f'❌ 匯入失敗：缺少必要欄位 {missing}', 'danger')
             return redirect(url_for('admin_candidates.admin_import_candidates'))
 
-        # 取得第一階段 id（預設把匯入的人都放在第一階段）
+        # 取得第一階段 id
         first_phase_id = db.session.query(func.min(VotePhase.id)).scalar()
         if not first_phase_id:
             flash('❌ 尚未建立任何投票階段，請先到「投票階段管理」建立階段。', 'danger')
@@ -62,14 +65,14 @@ def import_candidates():
                 cand = Candidate.query.filter_by(username=username, phase_id=first_phase_id).first()
 
                 if cand:
-                    # 已存在 → 更新資料
+                    # 更新現有資料
                     cand.name = parent_name
                     cand.parent_name = parent_name
                     cand.class_name = class_name
                     cand.set_password(password)
                     updated += 1
                 else:
-                    # 不存在 → 新增
+                    # 新增候選人
                     cand = Candidate(
                         username=username,
                         name=parent_name,
