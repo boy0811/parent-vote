@@ -28,7 +28,8 @@ class Candidate(db.Model):
     )
 
     def set_password(self, password):
-        self.password_hash = generate_password_hash(password)
+        # 改用 pbkdf2:sha256，避免 scrypt OOM
+        self.password_hash = generate_password_hash(password, method='pbkdf2:sha256', salt_length=16)
 
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
@@ -45,7 +46,6 @@ class Vote(db.Model):
     __table_args__ = (
         db.UniqueConstraint('voter_id', 'candidate_id', 'phase_id', name='uix_vote_unique'),
     )
-
 
 # ----------------------
 # 投票階段模型
@@ -76,7 +76,7 @@ class Admin(db.Model):
     password_hash = db.Column(db.String(512), nullable=False)
 
     def set_password(self, password):
-        self.password_hash = generate_password_hash(password)
+        self.password_hash = generate_password_hash(password, method='pbkdf2:sha256', salt_length=16)
 
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
@@ -92,7 +92,7 @@ class Staff(db.Model):
     class_name = db.Column(db.String(50), nullable=True)
 
     def set_password(self, password):
-        self.password_hash = generate_password_hash(password)
+        self.password_hash = generate_password_hash(password, method='pbkdf2:sha256', salt_length=16)
 
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
@@ -106,6 +106,9 @@ class StaffVote(db.Model):
     vote_result = db.Column(db.String(10), nullable=False)
     reset_id = db.Column(db.Integer, nullable=False, default=1)
 
+# ----------------------
+# 操作紀錄
+# ----------------------
 class OperationLog(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_type = db.Column(db.String(20))  # admin/candidate/staff
