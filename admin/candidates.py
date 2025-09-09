@@ -1,10 +1,8 @@
-from flask import Blueprint, render_template, redirect, url_for, request, flash, session, send_file
+from flask import Blueprint, render_template, redirect, url_for, request, flash, session
 from models import db, Candidate, VotePhase, Vote
 import pandas as pd
-import io
-import datetime
+import csv
 from sqlalchemy import func
-
 
 admin_candidates_bp = Blueprint('admin_candidates', __name__, url_prefix='/admin')
 
@@ -21,59 +19,66 @@ def import_candidates():
             flash('請選擇檔案', 'danger')
             return redirect(url_for('admin_candidates.admin_import_candidates'))
 
-        try:
-            # 根據副檔名決定讀取方式
-            ext = file.filename.lower().split('.')[-1]
+        ext = file.filename.lower().split('.')[-1]
 
+        try:
+            # CSV
             if ext == "csv":
                 try:
-                    df = pd.read_csv(file, dtype=str, encoding="utf-8").fillna("")
+                    file.stream.seek(0)
+                    reader = csv.DictReader((line.decode("utf-8-sig") for line in file.stream))
                 except UnicodeDecodeError:
-                    file.seek(0)  # 🔑 重置游標再讀一次
-                    df = pd.read_csv(file, dtype=str, encoding="big5").fillna("")
+                    file.stream.seek(0)
+                    reader = csv.DictReader((line.decode("big5") for line in file.stream))
+                rows = list(reader)
+
+            # Excel
             else:
                 df = pd.read_excel(file, dtype=str, engine="openpyxl").fillna("")
+                rows = df.to_dict(orient="records")
+
         except Exception as e:
             flash(f'❌ 讀取檔案失敗：{e}', 'danger')
             return redirect(url_for('admin_candidates.admin_import_candidates'))
 
         # 檢查必填欄位
         required_cols = {'帳號', '密碼', '班級', '家長姓名'}
-        missing = required_cols - set(df.columns)
-        if missing:
-            flash(f'❌ 匯入失敗：缺少必要欄位 {missing}', 'danger')
+        if not rows or not required_cols.issubset(rows[0].keys()):
+            flash(f'❌ 匯入失敗：缺少必要欄位 {required_cols}', 'danger')
             return redirect(url_for('admin_candidates.admin_import_candidates'))
 
         # 取得第一階段 id
         first_phase_id = db.session.query(func.min(VotePhase.id)).scalar()
         if not first_phase_id:
-            flash('❌ 尚未建立任何投票階段，請先到「投票階段管理」建立階段。', 'danger')
+            flash('❌ 尚未建立任何投票階段，請先建立。', 'danger')
             return redirect(url_for('admin_candidates.admin_import_candidates'))
 
-        created, skipped, updated = 0, 0, 0
+        created, updated, skipped = 0, 0, 0
 
         try:
-            for _, row in df.iterrows():
-                username = row['帳號'].strip()
-                password = str(row['密碼']).strip() or '1234'
-                class_name = row['班級'].strip()
-                parent_name = row['家長姓名'].strip()
+            for row in rows:
+                username = (row.get('帳號') or '').strip()
+                password = str(row.get('密碼') or '').strip() or '1234'
+                class_name = (row.get('班級') or '').strip()
+                parent_name = (row.get('家長姓名') or '').strip()
 
                 if not username:
                     skipped += 1
                     continue
 
-                cand = Candidate.query.filter_by(username=username, phase_id=first_phase_id).first()
+                cand = db.session.query(Candidate).filter_by(
+                    username=username, phase_id=first_phase_id
+                ).first()
 
                 if cand:
-                    # 更新現有資料
+                    # 更新
                     cand.name = parent_name
                     cand.parent_name = parent_name
                     cand.class_name = class_name
                     cand.set_password(password)
                     updated += 1
                 else:
-                    # 新增候選人
+                    # 新增
                     cand = Candidate(
                         username=username,
                         name=parent_name,
@@ -96,6 +101,7 @@ def import_candidates():
 
     return render_template('admin_import_candidates.html')
 
+
 # ✅ 候選人列表
 @admin_candidates_bp.route('/candidates', methods=['GET'], endpoint='admin_candidate_list')
 def admin_candidate_list():
@@ -115,7 +121,7 @@ def admin_add_candidate():
     if request.method == 'POST':
         candidate = Candidate(
             username=request.form['username'],
-            name=request.form['parent_name'],  # ✅ name 同 parent_name
+            name=request.form['parent_name'],
             parent_name=request.form['parent_name'],
             class_name=request.form['class_name']
         )
@@ -138,7 +144,7 @@ def admin_edit_candidate(candidate_id):
 
     if request.method == 'POST':
         candidate.username = request.form['username']
-        candidate.name = request.form['parent_name']  # ✅ name 同 parent_name
+        candidate.name = request.form['parent_name']
         candidate.parent_name = request.form['parent_name']
         candidate.class_name = request.form['class_name']
         if request.form['password']:
@@ -173,13 +179,10 @@ def admin_delete_candidates():
     ids = request.form.getlist('candidate_ids')
     if ids:
         try:
-            # 轉成整數，避免型別不匹配
             ids = [int(i) for i in ids]
-
             Vote.query.filter(Vote.candidate_id.in_(ids)).delete(synchronize_session=False)
             Candidate.query.filter(Candidate.id.in_(ids)).delete(synchronize_session=False)
             db.session.commit()
-
             flash(f'✅ 已成功刪除 {len(ids)} 位候選人及其票數', 'success')
         except ValueError:
             flash('❌ 候選人 ID 格式錯誤', 'danger')

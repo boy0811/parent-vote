@@ -17,7 +17,7 @@ class Candidate(db.Model):
     parent_name = db.Column(db.String(50), nullable=True)
     phase_id = db.Column(db.Integer, db.ForeignKey('vote_phase.id', name='fk_candidate_phase'), default=1)
     has_voted = db.Column(db.Boolean, default=False)
-    is_signed_in = db.Column(db.Boolean, default=False)  # ✅ 確保在此定義
+    is_signed_in = db.Column(db.Boolean, default=False)
     signed_in_time = db.Column(db.DateTime, nullable=True)
     is_promoted = db.Column(db.Boolean, default=False)
     is_winner = db.Column(db.Boolean, default=False)
@@ -28,8 +28,8 @@ class Candidate(db.Model):
     )
 
     def set_password(self, password):
-        # 改用 pbkdf2:sha256，避免 scrypt OOM
-        self.password_hash = generate_password_hash(password, method='pbkdf2:sha256', salt_length=16)
+        # ✅ 降低迭代次數，避免 Render OOM
+        self.password_hash = generate_password_hash(password, method='pbkdf2:sha256:10000', salt_length=16)
 
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
@@ -76,7 +76,7 @@ class Admin(db.Model):
     password_hash = db.Column(db.String(512), nullable=False)
 
     def set_password(self, password):
-        self.password_hash = generate_password_hash(password, method='pbkdf2:sha256', salt_length=16)
+        self.password_hash = generate_password_hash(password, method='pbkdf2:sha256:10000', salt_length=16)
 
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
@@ -92,7 +92,7 @@ class Staff(db.Model):
     class_name = db.Column(db.String(50), nullable=True)
 
     def set_password(self, password):
-        self.password_hash = generate_password_hash(password, method='pbkdf2:sha256', salt_length=16)
+        self.password_hash = generate_password_hash(password, method='pbkdf2:sha256:10000', salt_length=16)
 
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
