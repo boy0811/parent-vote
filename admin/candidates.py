@@ -2,6 +2,7 @@ from flask import Blueprint, render_template, redirect, url_for, request, flash,
 from models import db, Candidate, VotePhase, Vote
 import pandas as pd
 import csv
+import chardet
 from sqlalchemy import func
 
 admin_candidates_bp = Blueprint('admin_candidates', __name__, url_prefix='/admin')
@@ -24,12 +25,14 @@ def import_candidates():
         try:
             # CSV
             if ext == "csv":
-                try:
-                    file.stream.seek(0)
-                    reader = csv.DictReader((line.decode("utf-8-sig") for line in file.stream))
-                except UnicodeDecodeError:
-                    file.stream.seek(0)
-                    reader = csv.DictReader((line.decode("big5") for line in file.stream))
+                raw = file.read()  # 讀取所有內容
+                result = chardet.detect(raw)  # 偵測編碼
+                encoding = result["encoding"] or "utf-8"
+                file.stream.seek(0)  # 重設檔案指標
+
+                reader = csv.DictReader(
+                    (line.decode(encoding, errors="ignore") for line in file.stream)
+                )
                 rows = list(reader)
 
             # Excel
