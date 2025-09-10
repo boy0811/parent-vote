@@ -88,17 +88,6 @@ db.init_app(app)
 migrate = Migrate(app, db)
 
 # -------------------------------------------------
-# 強制清空 + 重建資料表（Render 免費版沒有 shell，只能靠這招）
-# -------------------------------------------------
-with app.app_context():
-    print("⚡ Dropping all tables...")
-    db.drop_all()
-    print("⚡ Creating all tables...")
-    db.create_all()
-    print("✅ DB schema reset 完成")
-
-
-# -------------------------------------------------
 # 載入並註冊 Blueprints
 # -------------------------------------------------
 from admin.admin_logs import admin_logs_bp
@@ -160,6 +149,7 @@ def healthz():
 # -------------------------------------------------
 @app.cli.command("init-admin")
 def init_admin():
+    """建立預設管理員帳號"""
     with app.app_context():
         username = 'admin'
         password = 'admin'
@@ -175,8 +165,11 @@ def init_admin():
 
 @app.cli.command("init-vote-phases")
 def init_vote_phases_command():
+    """初始化投票階段"""
     with app.app_context():
-        VotePhase.query.delete()
+        if VotePhase.query.count() > 0:
+            print("⚠️ 已存在投票階段，不重複建立")
+            return
         phases = [
             VotePhase(id=1, name='家長委員', max_votes=6),
             VotePhase(id=2, name='常務委員', max_votes=3),
@@ -184,9 +177,7 @@ def init_vote_phases_command():
         ]
         db.session.add_all(phases)
         db.session.commit()
-        print("✅ 投票階段已重新初始化完成：")
-        for p in phases:
-            print(f" - ID: {p.id}, 階段名稱: {p.name}，可投票數: {p.max_votes}")
+        print("✅ 投票階段已初始化完成")
 
 # -------------------------------------------------
 # 自動記錄操作紀錄
