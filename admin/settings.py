@@ -114,7 +114,7 @@ def clear_phase_data():
 # 🧹 一鍵清除所有資料
 @admin_settings_bp.route('/clear_all_data', methods=['POST'], endpoint='clear_all_data')
 def clear_all_data():
-    from models import OperationLog, User
+    from models import OperationLog, User, Admin
 
     confirm_text = request.form.get('confirm_delete', '').strip()
     if confirm_text != 'DELETE':
@@ -127,8 +127,15 @@ def clear_all_data():
     phase_deleted = VotePhase.query.delete()
     setting_deleted = Setting.query.delete()
     log_deleted = OperationLog.query.delete()
-    user_deleted = User.query.delete()   # ✅ 把所有帳號也刪掉（包含簽到狀態）
+    user_deleted = User.query.delete()
+    admin_deleted = Admin.query.delete()
 
+    db.session.commit()
+
+    # 🔹 建立預設管理員
+    default_admin = Admin(username="admin")
+    default_admin.set_password("1234")
+    db.session.add(default_admin)
     db.session.commit()
 
     flash(f"""🧹 已清除所有資料：
@@ -137,7 +144,10 @@ def clear_all_data():
     - 階段 {phase_deleted} 筆
     - 系統設定 {setting_deleted} 筆
     - 操作紀錄 {log_deleted} 筆
-    - 帳號（含簽到狀態） {user_deleted} 筆""", "success")
+    - 使用者帳號 {user_deleted} 筆
+    - 管理員帳號 {admin_deleted} 筆
+    ✅ 已建立預設管理員：帳號 admin / 密碼 1234
+    """, "success")
 
     return redirect(url_for('admin_settings.admin_settings'))
 
