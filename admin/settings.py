@@ -114,18 +114,20 @@ def clear_phase_data():
 # 🧹 一鍵清除所有資料
 @admin_settings_bp.route('/clear_all_data', methods=['POST'], endpoint='clear_all_data')
 def clear_all_data():
-    from models import OperationLog
+    from models import OperationLog, User
 
     confirm_text = request.form.get('confirm_delete', '').strip()
     if confirm_text != 'DELETE':
         flash("⚠️ 驗證字串錯誤，未執行清空動作。", "warning")
         return redirect(url_for('admin_settings.admin_settings'))
 
+    # 🔹 清空主要表
     vote_deleted = Vote.query.delete()
     candidate_deleted = Candidate.query.delete()
     phase_deleted = VotePhase.query.delete()
     setting_deleted = Setting.query.delete()
     log_deleted = OperationLog.query.delete()
+    user_deleted = User.query.delete()   # ✅ 把所有帳號也刪掉（包含簽到狀態）
 
     db.session.commit()
 
@@ -134,7 +136,8 @@ def clear_all_data():
     - 候選人 {candidate_deleted} 筆
     - 階段 {phase_deleted} 筆
     - 系統設定 {setting_deleted} 筆
-    - 操作紀錄 {log_deleted} 筆""", "success")
+    - 操作紀錄 {log_deleted} 筆
+    - 帳號（含簽到狀態） {user_deleted} 筆""", "success")
 
     return redirect(url_for('admin_settings.admin_settings'))
 

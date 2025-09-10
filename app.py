@@ -6,6 +6,7 @@ import secrets
 from flask import Flask, render_template, redirect, url_for, request, session
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
+from admin.admin_users import admin_users_bp
 
 from models import db, Admin, VotePhase
 from utils.helpers import (
@@ -116,6 +117,7 @@ app.register_blueprint(admin_logs_bp, url_prefix='/admin')
 app.register_blueprint(auth_bp)
 app.register_blueprint(staff_bp, url_prefix='/staff')
 app.register_blueprint(checkin_panel_bp)
+app.register_blueprint(admin_users_bp, url_prefix='/admin')
 
 # -------------------------------------------------
 # Routes

@@ -227,8 +227,8 @@ def clear_parent_votes():
 # ✅ 得票結果頁（admin_winners.html）
 from sqlalchemy import select
 
+
 # ✅ 最新已結束階段投票結果
-# admin_votes.py
 @admin_votes_bp.route('/winners', methods=['GET'], endpoint='admin_winners')
 def admin_winners():
     if 'admin_id' not in session:
@@ -252,7 +252,7 @@ def admin_winners():
     current_phase = VotePhase.query.get(phase_id)
     promote_count = current_phase.promote_count or 0
 
-    # ✅ 查詢所有候選人與票數
+    # ✅ 查詢候選人與票數（僅限該階段）
     results = db.session.query(
         Candidate,
         func.count(Vote.id).label('vote_count')
@@ -268,7 +268,6 @@ def admin_winners():
     else:
         threshold_vote = 0
 
-    # ✅ 判斷是否全部同票人可補滿名額
     count_above_threshold = len([r for r in results if r[1] > threshold_vote])
     same_as_threshold = [r for r in results if r[1] == threshold_vote]
     remaining_slots = promote_count - count_above_threshold
@@ -280,36 +279,43 @@ def admin_winners():
         c.rank = idx
         c.vote_count = vote_count
 
+        # 晉級判斷
         if vote_count > threshold_vote:
             c.status = 'promoted'
             c.is_promoted = True
         elif vote_count == threshold_vote:
             if len(same_as_threshold) <= remaining_slots:
-                c.status = 'promoted'  # ✅ 直接晉級
+                c.status = 'promoted'
                 c.is_promoted = True
             elif c.is_promoted:
-                c.status = 'manual_promoted'  # 已勾選手動晉級
+                c.status = 'manual_promoted'
             else:
-                c.status = 'tied'  # 同票但未處理
+                c.status = 'tied'
         else:
             c.status = 'not_promoted'
 
         if c.is_promoted:
             promoted_candidates.append(c)
 
+        db.session.add(c)
         candidates.append(c)
 
-    # ✅ 設定值
+    # ✅ 寫回 DB
+    db.session.commit()
+
+    # ✅ 取設定值
     vote_title = Setting.query.filter_by(key="vote_title").first()
     refresh_interval = Setting.query.filter_by(key="refresh_interval").first()
 
-    return render_template("admin_winners.html",
-                           candidates=candidates,
-                           promoted_candidates=promoted_candidates,
-                           current_phase=current_phase,
-                           promote_count=promote_count,
-                           vote_title=vote_title.value if vote_title else "投票結果",
-                           refresh_interval=int(refresh_interval.value) if refresh_interval else 10)
+    return render_template(
+        "admin_winners.html",
+        candidates=candidates,
+        promoted_candidates=promoted_candidates,
+        current_phase=current_phase,
+        promote_count=promote_count,
+        vote_title=vote_title.value if vote_title else "投票結果",
+        refresh_interval=int(refresh_interval.value) if refresh_interval else 10
+    )
 
 # ✅ 手動選取同票候選人（admin_promote.html）
 @admin_votes_bp.route('/promote', methods=['GET', 'POST'], endpoint='admin_tiebreaker')
@@ -428,22 +434,19 @@ def votes_log():
     if 'admin' not in session:
         return redirect(url_for('admin_auth.admin_login'))
 
-    from sqlalchemy.orm import aliased
-    Voter = aliased(Candidate)
-    Target = aliased(Candidate)
+    from models import User
 
     votes = (
         db.session.query(
             Vote.id,
             VotePhase.name.label("phase"),
-            Voter.class_name.label("voter_class"),
-            Voter.parent_name.label("voter_name"),
-            Target.class_name.label("target_class"),
-            Target.parent_name.label("target_name")
+            User.username.label("voter_username"),
+            Candidate.class_name.label("target_class"),
+            Candidate.parent_name.label("target_name")
         )
         .join(VotePhase, Vote.phase_id == VotePhase.id)
-        .join(Voter, Vote.voter_id == Voter.id)
-        .join(Target, Vote.candidate_id == Target.id)
+        .join(User, Vote.voter_id == User.id)   # ✅ 投票人改成 User
+        .join(Candidate, Vote.candidate_id == Candidate.id)  # ✅ 投票目標仍是候選人
         .order_by(VotePhase.id, Vote.id)
         .all()
     )
@@ -451,7 +454,7 @@ def votes_log():
     vote_details = [
         {
             "phase": v.phase,
-            "voter": f"{v.voter_class} {v.voter_name}",
+            "voter": v.voter_username,   # ✅ 只顯示帳號
             "candidate": f"{v.target_class} {v.target_name}"
         }
         for v in votes

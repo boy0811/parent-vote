@@ -22,9 +22,9 @@
           <thead class="table-dark text-center">
             <tr>
               <th>#</th>
-              <th>階段</th>
-              <th>投票人</th>
-              <th>投給</th>
+              <th>投票階段</th>
+              <th>投票帳號</th>
+              <th>投給候選人</th>
             </tr>
           </thead>
           <tbody>
@@ -61,12 +61,13 @@
 
 <script>
 $(function () {
+  const phaseName = "{{ votes[0].phase if votes|length > 0 else 'all' }}";
   $('#votesLogTable').DataTable({
     pageLength: 25,
     dom: 'Bfrtip',
     buttons: [
-      { extend: 'csv', text: '匯出 CSV', title: 'votes_log' },
-      { extend: 'excel', text: 'Excel', title: 'votes_log' },
+      { extend: 'csv', text: '匯出 CSV', title: 'votes_log_' + phaseName },
+      { extend: 'excel', text: '匯出 Excel', title: 'votes_log_' + phaseName },
       { extend: 'print', text: '列印' }
     ],
     language: {

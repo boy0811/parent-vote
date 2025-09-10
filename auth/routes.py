@@ -1,8 +1,6 @@
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash, jsonify
-from models import db, Candidate, VotePhase, Vote, Setting
-from werkzeug.security import check_password_hash
+from models import db, Candidate, User, VotePhase, Vote, Setting
 from utils.helpers import get_grade_from_class, get_setting, group_candidates_by_grade
-from collections import defaultdict
 from sqlalchemy import func
 
 auth_bp = Blueprint('auth', __name__)
@@ -27,7 +25,6 @@ def is_qualified_voter(candidate, current_phase):
     if not current_phase or not candidate:
         return False
 
-    # 取得第一階段 ID
     first_phase_id = db.session.query(func.min(VotePhase.id)).scalar()
     if not first_phase_id:
         return False
@@ -38,7 +35,7 @@ def is_qualified_voter(candidate, current_phase):
 
     # 第二、三階段：必須為第一階段晉級者 + 簽到
     first_phase_promoted = Candidate.query.filter_by(
-        username=candidate.username,
+        id=candidate.id,
         phase_id=first_phase_id,
         is_promoted=True
     ).first()
@@ -58,34 +55,19 @@ def home():
 @auth_bp.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
-        username = request.form['username']
-        password = request.form['password']
+        username = request.form['username'].strip()
+        password = request.form['password'].strip()
 
-        current_phase = get_current_phase()
-        candidate = Candidate.query.filter_by(username=username).order_by(Candidate.phase_id.desc()).first()
-
-        if not candidate:
-            flash('帳號不存在，請確認後再試。', 'danger')
-            return redirect(url_for('auth.login'))
-
-        if not current_phase:
-            flash('⚠️ 目前尚未開啟任何投票階段', 'warning')
-            return redirect(url_for('auth.login'))
-
-        # 非第一階段時，檢查是否為第一階段晉級者
-        first_phase_id = db.session.query(func.min(VotePhase.id)).scalar()
-        if current_phase.id != first_phase_id:
-            promoted = Candidate.query.filter_by(username=username, phase_id=first_phase_id, is_promoted=True).first()
-            if not promoted:
-                flash('您不在晉級名單，無法參與本階段投票', 'danger')
-                return redirect(url_for('auth.login'))
-
-        if candidate and check_password_hash(candidate.password_hash, password):
-            session['voter_candidate_id'] = candidate.id
-            # 直接導向候選人主頁，由候選人主頁判斷是否補資料或投票
-            return redirect(url_for('auth.candidate_dashboard'))
-        else:
+        user = User.query.filter_by(username=username).first()
+        if not user or not user.check_password(password):
             flash('帳號或密碼錯誤，請確認後再試。', 'danger')
+            return redirect(url_for('auth.login'))
+
+        # ✅ 登入成功
+        session['user_id'] = user.id
+        session['role'] = 'voter'   # 標記身份
+
+        return redirect(url_for('auth.vote'))  # 直接導向投票頁
 
     return render_template('login.html')
 
@@ -101,14 +83,9 @@ def confirm_candidate():
     candidate = Candidate.query.get(candidate_id)
 
     if request.method == 'POST':
-        class_name = request.form.get('class_name')
-        parent_name = request.form.get('parent_name')
-
-        candidate.class_name = class_name
-        candidate.parent_name = parent_name
-
+        candidate.class_name = request.form.get('class_name')
+        candidate.parent_name = request.form.get('parent_name')
         db.session.commit()
-
         return redirect(url_for('auth.candidate_dashboard'))
 
     return render_template('confirm.html', candidate=candidate)
@@ -116,7 +93,6 @@ def confirm_candidate():
 # ----------------------
 # 📊 候選人主頁
 # ----------------------
-
 def get_first_phase_id():
     return db.session.query(func.min(VotePhase.id)).scalar()
 
@@ -126,8 +102,8 @@ def candidate_dashboard():
         return redirect(url_for('auth.login'))
 
     candidate = Candidate.query.get(session['voter_candidate_id'])
-    
-    # 新增：資料不完整，先跳補資料頁
+
+    # 資料不完整 → 跳補資料頁
     if not candidate.class_name or not candidate.parent_name:
         return redirect(url_for('auth.confirm_candidate'))
 
@@ -137,7 +113,7 @@ def candidate_dashboard():
     promoted = False
     if first_phase_id:
         promoted = Candidate.query.filter_by(
-            username=candidate.username,
+            id=candidate.id,
             phase_id=first_phase_id,
             is_promoted=True
         ).first() is not None
@@ -160,7 +136,6 @@ def candidate_dashboard():
         needs_checkin=needs_checkin,
         first_phase_id=first_phase_id
     )
-
 
 # ----------------------
 # 📌 簽到
@@ -185,31 +160,31 @@ def checkin():
 # ----------------------
 @auth_bp.route('/vote', methods=['GET', 'POST'], endpoint='vote')
 def vote():
-    candidate_id = session.get('voter_candidate_id')
-    if not candidate_id:
+    user_id = session.get('user_id')
+    if not user_id:
         flash("請先登入", "danger")
         return redirect(url_for('auth.login'))
 
-    candidate = Candidate.query.get(candidate_id)
     current_phase = get_current_phase()
-
     if not current_phase:
         flash("⚠️ 目前尚未開啟投票階段", "warning")
-        return redirect(url_for('auth.candidate_dashboard'))
+        return redirect(url_for('auth.login'))
 
-    if not is_qualified_voter(candidate, current_phase):
-        flash("⚠️ 您不具備本階段投票資格", "warning")
-        return redirect(url_for('auth.candidate_dashboard'))
+    # 🔹 強制簽到檢查（第 2、3 階段）
+    if current_phase.id in [2, 3]:
+        user = User.query.get(user_id)
+        if not user or not user.is_signed_in:
+            flash("⚠️ 請先簽到再投票", "warning")
+            return redirect(url_for('auth.checkin'))
 
     vote_title = get_setting("vote_title", default="家長投票", use_cache=False)
     max_votes = current_phase.max_votes or 0
     min_votes = getattr(current_phase, 'min_votes', 1) or 1
 
-    existing_vote_count = Vote.query.filter_by(voter_id=candidate_id, phase_id=current_phase.id).count()
-    if candidate.has_voted or existing_vote_count > 0:
+    existing_vote_count = Vote.query.filter_by(voter_id=user_id, phase_id=current_phase.id).count()
+    if existing_vote_count > 0:
         return render_template(
             "already_voted.html",
-            candidate=candidate,
             vote_title=vote_title,
             phase=current_phase,
             max_votes=max_votes
@@ -225,16 +200,13 @@ def vote():
             return redirect(url_for('auth.vote'))
 
         for cid in selected_ids:
-            vote = Vote(candidate_id=int(cid), voter_id=candidate_id, phase_id=current_phase.id)
+            vote = Vote(candidate_id=int(cid), voter_id=user_id, phase_id=current_phase.id)
             db.session.add(vote)
 
-        candidate.has_voted = True
         db.session.commit()
-
         flash("✅ 投票完成，感謝您的參與", "success")
         return render_template(
             "already_voted.html",
-            candidate=candidate,
             vote_title=vote_title,
             phase=current_phase,
             max_votes=max_votes
@@ -244,10 +216,9 @@ def vote():
     grouped_candidates = group_candidates_by_grade(candidates)
     return render_template(
         "vote.html",
-        candidate=candidate,
-        phase=current_phase,
         grouped_candidates=grouped_candidates,
         vote_title=vote_title,
+        phase=current_phase,
         max_votes=max_votes,
         min_votes=min_votes
     )

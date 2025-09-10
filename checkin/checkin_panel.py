@@ -1,10 +1,9 @@
-# checkin/checkin_panel.py
-from flask import Blueprint, render_template, request, jsonify, session, abort
+from flask import Blueprint, render_template, request, jsonify, session, abort, redirect, url_for
 from functools import wraps
 from datetime import datetime
-from models import db, Candidate, VotePhase
+from models import db, User, VotePhase
 
-# 統一用 /checkin_panel 作為 url_prefix
+# ✅ 統一 url_prefix
 checkin_panel_bp = Blueprint('checkin_panel', __name__, url_prefix='/checkin_panel')
 
 # -------------------------------------------------
@@ -19,85 +18,78 @@ def staff_or_admin_required(f):
     return wrapper
 
 # -------------------------------------------------
-# 年級轉換（001~020 => 幼兒園；其餘用第一碼對應 1~6 年級）
+# 帳號對應年級規則
 # -------------------------------------------------
-def get_grade(class_name: str) -> str:
-    if not class_name:
-        return ''
-    s = str(class_name).strip()
+grade_rules = [
+    (1, 3, "幼兒園"),
+    (4, 33, "一年級"),
+    (34, 63, "二年級"),
+    (64, 93, "三年級"),
+    (94, 123, "四年級"),
+    (124, 153, "五年級"),
+    (154, 183, "六年級"),
+]
 
-    # 純數字情況
-    if s.isdigit():
-        num = int(s)
-        if 1 <= num <= 20:
-            return '幼兒園'
-        first = s[0]
-    else:
-        # 文字中帶有「幼」
-        if '幼' in s:
-            return '幼兒園'
-        first = s[0]
+def get_grade_by_username(username: str) -> str:
+    try:
+        num = int(username.split("-")[1])  # 例如 wh-045 → 45
+    except:
+        return "未分班"
 
-    mapping = {
-        '1': '一年級',
-        '2': '二年級',
-        '3': '三年級',
-        '4': '四年級',
-        '5': '五年級',
-        '6': '六年級'
-    }
-    return mapping.get(first, '')
+    for start, end, grade in grade_rules:
+        if start <= num <= end:
+            return grade
+    return "未分班"
+
 
 # -------------------------------------------------
-# 簽到面板
+# 簽到面板 → 分年級顯示帳號
 # -------------------------------------------------
 @checkin_panel_bp.route('/', methods=['GET'])
 @staff_or_admin_required
 def panel():
-    # 如果你只允許 2、3 階段參與簽到，保留這行；若要所有階段都可簽到，改成 VotePhase.query.all()
-    phases = VotePhase.query.filter(VotePhase.id.in_([2, 3])).order_by(VotePhase.id).all()
+    # ✅ 確保重新查詢最新 User 資料
+    users = db.session.query(User).order_by(User.username.asc()).all()
 
-    selected_phase_id = request.args.get('phase_id', type=int)
-    selected_grade = request.args.get('grade', type=str, default='')
+    # 分年級
+    grade_groups = {}
+    for u in users:
+        grade = get_grade_by_username(u.username)
+        if grade not in grade_groups:
+            grade_groups[grade] = []
+        grade_groups[grade].append(u)
 
-    # 若未指定 phase_id，優先抓目前 is_open=True 的階段
-    if not selected_phase_id:
-        current_phase = VotePhase.query.filter_by(is_open=True).order_by(VotePhase.id).first()
-        if current_phase:
-            selected_phase_id = current_phase.id
+    # ✅ 移除「0 人」的群組（例如未分班）
+    grade_groups = {g: us for g, us in grade_groups.items() if len(us) > 0}
 
-    q = Candidate.query
-    if selected_phase_id:
-        q = q.filter(Candidate.phase_id == selected_phase_id)
+    total = len(users)
+    signed_count = sum(1 for u in users if u.is_signed_in)
 
-    candidates = q.order_by(Candidate.class_name.asc(), Candidate.name.asc()).all()
-
-    # 年級過濾
-    if selected_grade:
-        candidates = [c for c in candidates if get_grade(c.class_name) == selected_grade]
+    current_phase = VotePhase.query.filter_by(is_open=True).order_by(VotePhase.id).first()
 
     return render_template(
         'checkin_panel.html',
-        candidates=candidates,
-        phases=phases,
-        selected_phase_id=selected_phase_id,
-        selected_grade=selected_grade
+        grade_groups=grade_groups,
+        phases=VotePhase.query.all(),
+        current_phase=current_phase,
+        total=total,
+        signed_count=signed_count
     )
 
 # -------------------------------------------------
 # 簽到
 # -------------------------------------------------
-@checkin_panel_bp.route('/signin/<int:candidate_id>', methods=['POST'])
+@checkin_panel_bp.route('/signin/<int:user_id>', methods=['POST'])
 @staff_or_admin_required
-def signin(candidate_id):
-    c = Candidate.query.get_or_404(candidate_id)
+def signin(user_id):
+    u = User.query.get_or_404(user_id)
     try:
-        c.is_signed_in = True
-        c.signed_in_time = datetime.now()
+        u.is_signed_in = True
+        u.signed_in_time = datetime.now()
         db.session.commit()
         return jsonify({
             'status': 'success',
-            'signed_in_time': c.signed_in_time.strftime('%Y-%m-%d %H:%M:%S')
+            'signed_in_time': u.signed_in_time.strftime('%Y-%m-%d %H:%M:%S')
         })
     except Exception as e:
         db.session.rollback()
@@ -106,22 +98,22 @@ def signin(candidate_id):
 # -------------------------------------------------
 # 取消簽到
 # -------------------------------------------------
-@checkin_panel_bp.route('/uncheckin/<int:candidate_id>', methods=['POST'])
+@checkin_panel_bp.route('/uncheckin/<int:user_id>', methods=['POST'])
 @staff_or_admin_required
-def uncheckin(candidate_id):
-    c = Candidate.query.get_or_404(candidate_id)
+def uncheckin(user_id):
+    u = User.query.get_or_404(user_id)
     try:
-        c.is_signed_in = False
-        c.signed_in_time = None
+        u.is_signed_in = False
+        u.signed_in_time = None
         db.session.commit()
         return jsonify({'status': 'success'})
     except Exception as e:
         db.session.rollback()
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
-from flask import redirect, url_for
-
+# -------------------------------------------------
+# 錯誤處理：未登入導向登入頁
+# -------------------------------------------------
 @checkin_panel_bp.app_errorhandler(403)
 def handle_403(e):
-    # 依你的登入頁決定要導去哪個
     return redirect(url_for('staff.staff_login'))

@@ -1,25 +1,24 @@
 {% extends "layout.html" %}
-
-{% block title %}匯入候選人{% endblock %}
+{% block title %}匯入帳號{% endblock %}
 
 {% block content %}
 <div class="container mt-5">
-  <h2 class="mb-4 text-center">📥 匯入候選人名單</h2>
+  <h2 class="mb-4 text-center">📥 匯入帳號</h2>
 
   <div class="card shadow rounded-4 col-md-8 col-lg-6 mx-auto p-4">
-    <form method="POST" action="{{ url_for('admin_candidates.admin_import_candidates') }}" enctype="multipart/form-data">
+    <form method="POST" action="{{ url_for('admin_users.import_users') }}" enctype="multipart/form-data">
       <div class="mb-3">
         <label for="file" class="form-label fw-bold">請選擇 Excel/CSV 檔案</label>
         <input class="form-control form-control-lg rounded-3" type="file" id="file" name="file" accept=".xls,.xlsx,.csv" required>
         <div class="form-text">
           檔案需包含以下欄位：
-          <strong>班級、家長姓名</strong>
+          <strong>帳號、密碼</strong>
         </div>
       </div>
 
       <div class="d-grid gap-3 mt-4">
         <button type="submit" class="btn btn-primary btn-lg rounded-pill">📤 匯入</button>
-        <a href="{{ url_for('admin_candidates.admin_candidate_list') }}" class="btn btn-outline-secondary btn-lg rounded-pill">↩️ 返回候選人列表</a>
+        <a href="{{ url_for('admin_users.user_list') }}" class="btn btn-outline-secondary btn-lg rounded-pill">↩️ 返回帳號列表</a>
       </div>
     </form>
 

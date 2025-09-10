@@ -46,7 +46,7 @@
                   {% for candidate in candidates %}
                     <div class="col">
                       <div class="candidate-item border p-4 rounded-4 shadow-sm h-100 d-flex align-items-center justify-content-center flex-column">
-                        <input type="checkbox" class="vote-checkbox" name="candidate_ids" value="{{ candidate.id }}" id="cand{{ candidate.id }}" onchange="onCheckboxChange(this)">
+                        <input type="checkbox" class="vote-checkbox" name="candidate_ids" value="{{ candidate.id }}" id="cand{{ candidate.id }}">
                         <label for="cand{{ candidate.id }}" class="w-100 mb-2 fw-bold fs-5" style="cursor:pointer;">{{ candidate.class_name }} {{ candidate.parent_name }}</label>
                       </div>
                     </div>
@@ -90,15 +90,17 @@
 
 <script>
   const maxVotes = {{ max_votes }};
-  console.log('maxVotes:', maxVotes);
 
   document.addEventListener('DOMContentLoaded', () => {
+    // 綁定每個 checkbox 的 change 事件
+    document.querySelectorAll('.vote-checkbox').forEach(cb => {
+      cb.addEventListener('change', () => onCheckboxChange(cb));
+    });
     updateSelectedCount();
   });
 
   function onCheckboxChange(checkbox) {
     const checkedBoxes = document.querySelectorAll('.vote-checkbox:checked');
-    console.log('checkedBoxes.length:', checkedBoxes.length);
     if (checkedBoxes.length > maxVotes) {
       checkbox.checked = false;  // 取消最新勾選
       alert(`最多只能投 ${maxVotes} 人`);
@@ -114,7 +116,6 @@
 
   function validateVote() {
     const checkedBoxes = document.querySelectorAll('.vote-checkbox:checked');
-    console.log('validateVote checkedBoxes.length:', checkedBoxes.length);
     if (checkedBoxes.length === 0) {
       alert("⚠️ 請至少選擇 1 位候選人");
       return false;

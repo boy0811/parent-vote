@@ -6,56 +6,57 @@
   <h2 class="text-center mb-4">📲 家長簽到面板</h2>
 
   <!-- ✅ 顯示當前階段 -->
-  {% if selected_phase_id %}
+  {% if current_phase %}
     <div class="alert alert-info text-center fs-5">
-      📌 當前階段： 
-      {% for phase in phases %}
-        {% if phase.id == selected_phase_id|int %}
-          <strong>{{ phase.name }}</strong>
-        {% endif %}
-      {% endfor %}
+      📌 當前階段： <strong>{{ current_phase.name }}</strong>
     </div>
   {% else %}
     <div class="alert alert-warning text-center fs-5">
-      ⛔ 尚未選擇階段
+      ⛔ 尚未開啟任何階段
     </div>
   {% endif %}
 
-  <!-- ✅ 年級篩選 -->
-  <form method="get" class="d-flex flex-wrap justify-content-center gap-3 mb-4">
-    <input type="hidden" name="phase_id" value="{{ selected_phase_id }}">
-    <div class="input-group" style="max-width: 250px;">
-      <label class="input-group-text">年級</label>
-      <select name="grade" class="form-select">
-        <option value="">全部</option>
-        <option value="幼兒園" {% if selected_grade == '幼兒園' %}selected{% endif %}>幼兒園</option>
-        <option value="一年級" {% if selected_grade == '一年級' %}selected{% endif %}>一年級</option>
-        <option value="二年級" {% if selected_grade == '二年級' %}selected{% endif %}>二年級</option>
-        <option value="三年級" {% if selected_grade == '三年級' %}selected{% endif %}>三年級</option>
-        <option value="四年級" {% if selected_grade == '四年級' %}selected{% endif %}>四年級</option>
-        <option value="五年級" {% if selected_grade == '五年級' %}selected{% endif %}>五年級</option>
-        <option value="六年級" {% if selected_grade == '六年級' %}selected{% endif %}>六年級</option>
-      </select>
-    </div>
-    <button type="submit" class="btn btn-outline-primary">查詢</button>
-  </form>
+  <!-- ✅ 簽到統計 -->
+  <div class="alert alert-success text-center fs-5">
+    ✅ 已簽到 <strong>{{ signed_count }}</strong> / 總人數 <strong>{{ total }}</strong>
+  </div>
 
-  <div class="row g-3">
-    {% for c in candidates %}
-    <div class="col-lg-3 col-md-4 col-sm-6">
-      <div class="card shadow-sm rounded-4 p-3 text-center {% if c.is_signed_in %}bg-success text-white{% else %}bg-light{% endif %}">
-        <h5 class="fw-bold">{{ c.class_name }}</h5>
-        <p>{{ c.parent_name }}</p>
+  <!-- ✅ 年級折疊群組 -->
+  <div class="accordion" id="gradeAccordion">
+    {% for grade, users_in_grade in grade_groups.items() %}
+      <div class="accordion-item">
+        <h2 class="accordion-header" id="heading-{{ loop.index }}">
+          <button class="accordion-button collapsed grade-center" type="button"
+                  data-bs-toggle="collapse" data-bs-target="#collapse-{{ loop.index }}"
+                  aria-expanded="false" aria-controls="collapse-{{ loop.index }}">
+            <div class="w-100 text-center">
+              {{ grade }}
+              <span class="badge bg-primary ms-2">{{ users_in_grade|length }}</span>
+            </div>
+          </button>
+        </h2>
+        <div id="collapse-{{ loop.index }}" class="accordion-collapse collapse"
+             aria-labelledby="heading-{{ loop.index }}" data-bs-parent="#gradeAccordion">
+          <div class="accordion-body">
+            <div class="row g-3">
+              {% for u in users_in_grade %}
+              <div class="col-lg-3 col-md-4 col-sm-6">
+                <div class="card shadow-sm rounded-4 p-3 text-center {% if u.is_signed_in %}bg-success text-white{% else %}bg-light{% endif %}">
+                  <h5 class="fw-bold">{{ u.username }}</h5>
 
-        {% if c.phase_id in [2,3] %}
-          {% if not c.is_signed_in %}
-            <button class="btn btn-outline-success rounded-pill mt-2" onclick="signIn({{ c.id }}, this)">✔️ 簽到</button>
-          {% else %}
-            <button class="btn btn-outline-light rounded-pill mt-2" onclick="unSignIn({{ c.id }}, this)">❌ 取消</button>
-          {% endif %}
-        {% endif %}
+                  {% if u.is_signed_in %}
+                    <p class="small">🕒 已簽到：{{ u.signed_in_time.strftime("%H:%M:%S") if u.signed_in_time else "" }}</p>
+                    <button class="btn btn-outline-light rounded-pill mt-2" onclick="unSignIn({{ u.id }}, this)">❌ 取消</button>
+                  {% else %}
+                    <button class="btn btn-outline-success rounded-pill mt-2" onclick="signIn({{ u.id }}, this)">✔️ 簽到</button>
+                  {% endif %}
+                </div>
+              </div>
+              {% endfor %}
+            </div>
+          </div>
+        </div>
       </div>
-    </div>
     {% endfor %}
   </div>
 
@@ -65,25 +66,25 @@
 </div>
 
 <script>
-function signIn(candidateId, button) {
+function signIn(userId, button) {
   if (!confirm('確定要簽到嗎？')) return;
   button.disabled = true;
   button.innerHTML = '<span class="spinner-border spinner-border-sm"></span> 簽到中...';
 
-  fetch(`/checkin_panel/signin/${candidateId}`, {method: 'POST'})
+  fetch(`/checkin_panel/signin/${userId}`, {method: 'POST'})
     .then(res => res.json())
     .then(data => {
       if (data.status === 'success') {
         const card = button.closest('.card');
-        const className = card.querySelector('h5').innerText;
-        const parentName = card.querySelector('p').innerText;
+        const username = card.querySelector('h5').innerText;
+        const now = new Date().toLocaleTimeString('zh-TW', { hour12: false });
 
         card.classList.remove('bg-light');
         card.classList.add('bg-success', 'text-white');
         card.innerHTML = `
-          <h5 class="fw-bold">${className}</h5>
-          <p>${parentName}</p>
-          <button class="btn btn-outline-light rounded-pill mt-2" onclick="unSignIn(${candidateId}, this)">❌ 取消</button>
+          <h5 class="fw-bold">${username}</h5>
+          <p class="small">🕒 已簽到：${now}</p>
+          <button class="btn btn-outline-light rounded-pill mt-2" onclick="unSignIn(${userId}, this)">❌ 取消</button>
         `;
       } else {
         alert('簽到失敗');
@@ -93,25 +94,23 @@ function signIn(candidateId, button) {
     });
 }
 
-function unSignIn(candidateId, button) {
+function unSignIn(userId, button) {
   if (!confirm('確定要取消簽到嗎？')) return;
   button.disabled = true;
   button.innerHTML = '<span class="spinner-border spinner-border-sm"></span> 取消中...';
 
-  fetch(`/checkin_panel/uncheckin/${candidateId}`, {method: 'POST'})
+  fetch(`/checkin_panel/uncheckin/${userId}`, {method: 'POST'})
     .then(res => res.json())
     .then(data => {
       if (data.status === 'success') {
         const card = button.closest('.card');
-        const className = card.querySelector('h5').innerText;
-        const parentName = card.querySelector('p').innerText;
+        const username = card.querySelector('h5').innerText;
 
         card.classList.remove('bg-success', 'text-white');
         card.classList.add('bg-light');
         card.innerHTML = `
-          <h5 class="fw-bold">${className}</h5>
-          <p>${parentName}</p>
-          <button class="btn btn-outline-success rounded-pill mt-2" onclick="signIn(${candidateId}, this)">✔️ 簽到</button>
+          <h5 class="fw-bold">${username}</h5>
+          <button class="btn btn-outline-success rounded-pill mt-2" onclick="signIn(${userId}, this)">✔️ 簽到</button>
         `;
       } else {
         alert('取消失敗');
@@ -121,4 +120,15 @@ function unSignIn(candidateId, button) {
     });
 }
 </script>
+
+<!-- ✅ 強制讓年級標題文字置中 -->
+<style>
+.accordion-button.grade-center {
+  justify-content: center !important;
+  text-align: center !important;
+}
+.accordion-button.grade-center::after {
+  margin-left: auto; /* 保持箭頭靠右 */
+}
+</style>
 {% endblock %}

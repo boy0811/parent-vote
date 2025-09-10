@@ -1,0 +1,28 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="container mt-5">
+  <h2 class="mb-4 text-center">👤 帳號資料 {{ '編輯' if user else '新增' }}</h2>
+
+  <form method="POST" class="card p-4 shadow-sm rounded-4 col-md-6 mx-auto">
+
+    <!-- 帳號 -->
+    <div class="mb-3">
+      <label class="form-label">帳號</label>
+      <input type="text" class="form-control" name="username"
+             value="{{ user.username if user else '' }}" required>
+    </div>
+
+    <!-- 密碼 -->
+    <div class="mb-3">
+      <label class="form-label">密碼 {% if user %}<span class="text-muted">(留空則不修改)</span>{% endif %}</label>
+      <input type="password" class="form-control" name="password" {% if not user %}required{% endif %}>
+    </div>
+
+    <div class="d-grid gap-2 mt-4">
+      <button type="submit" class="btn btn-primary btn-lg">💾 儲存</button>
+      <a href="{{ url_for('admin_users.user_list') }}" class="btn btn-secondary btn-lg">↩️ 返回帳號列表</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

@@ -5,16 +5,39 @@ from datetime import datetime
 db = SQLAlchemy()
 
 # ----------------------
-# 家長候選人模型
+# 帳號 (User) 模型：專管登入帳號密碼
+# ----------------------
+class User(db.Model):
+    __tablename__ = 'user'
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(50), unique=True, nullable=False)
+    password_hash = db.Column(db.String(512), nullable=False)
+
+    # 🔥 新增簽到欄位（原本只有 Candidate 有）
+    is_signed_in = db.Column(db.Boolean, default=False)
+    signed_in_time = db.Column(db.DateTime, nullable=True)
+
+    # ✅ 如果之後還需要綁候選人，可以保留；但只看帳號就不一定要
+    candidate_id = db.Column(db.Integer, db.ForeignKey('candidate.id'))
+    candidate = db.relationship("Candidate", back_populates="user", uselist=False)
+
+    def set_password(self, password):
+        self.password_hash = generate_password_hash(
+            password, method='pbkdf2:sha256:10000', salt_length=16
+        )
+
+    def check_password(self, password):
+        return check_password_hash(self.password_hash, password)
+
+# ----------------------
+# 家長候選人模型 (去掉帳號密碼)
 # ----------------------
 class Candidate(db.Model):
     __tablename__ = 'candidate'
     id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(50), nullable=False)  # 移除 unique=True
-    password_hash = db.Column(db.String(512), nullable=False)
-    name = db.Column(db.String(50), nullable=False)
-    class_name = db.Column(db.String(50), nullable=True)
-    parent_name = db.Column(db.String(50), nullable=True)
+    name = db.Column(db.String(50), nullable=False)             # 候選人顯示名
+    class_name = db.Column(db.String(50), nullable=True)        # 學生班級
+    parent_name = db.Column(db.String(50), nullable=True)       # 家長姓名
     phase_id = db.Column(db.Integer, db.ForeignKey('vote_phase.id', name='fk_candidate_phase'), default=1)
     has_voted = db.Column(db.Boolean, default=False)
     is_signed_in = db.Column(db.Boolean, default=False)
@@ -23,29 +46,21 @@ class Candidate(db.Model):
     is_winner = db.Column(db.Boolean, default=False)
     promote_type = db.Column(db.String(10), nullable=True)
 
-    __table_args__ = (
-        db.UniqueConstraint('username', 'phase_id', name='uq_username_phase'),
-    )
-
-    def set_password(self, password):
-        # ✅ 降低迭代次數，避免 Render OOM
-        self.password_hash = generate_password_hash(password, method='pbkdf2:sha256:10000', salt_length=16)
-
-    def check_password(self, password):
-        return check_password_hash(self.password_hash, password)
+    user = db.relationship("User", back_populates="candidate", uselist=False)
 
 # ----------------------
 # 家長投票紀錄
 # ----------------------
 class Vote(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    voter_id = db.Column(db.Integer, db.ForeignKey('candidate.id'), nullable=False)
+    voter_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     candidate_id = db.Column(db.Integer, db.ForeignKey('candidate.id'), nullable=False)
     phase_id = db.Column(db.Integer, db.ForeignKey('vote_phase.id'), nullable=False)
 
     __table_args__ = (
         db.UniqueConstraint('voter_id', 'candidate_id', 'phase_id', name='uix_vote_unique'),
     )
+
 
 # ----------------------
 # 投票階段模型
@@ -76,7 +91,9 @@ class Admin(db.Model):
     password_hash = db.Column(db.String(512), nullable=False)
 
     def set_password(self, password):
-        self.password_hash = generate_password_hash(password, method='pbkdf2:sha256:10000', salt_length=16)
+        self.password_hash = generate_password_hash(
+            password, method='pbkdf2:sha256:10000', salt_length=16
+        )
 
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
@@ -92,7 +109,9 @@ class Staff(db.Model):
     class_name = db.Column(db.String(50), nullable=True)
 
     def set_password(self, password):
-        self.password_hash = generate_password_hash(password, method='pbkdf2:sha256:10000', salt_length=16)
+        self.password_hash = generate_password_hash(
+            password, method='pbkdf2:sha256:10000', salt_length=16
+        )
 
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
