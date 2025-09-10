@@ -88,10 +88,30 @@ db.init_app(app)
 migrate = Migrate(app, db)
 
 # -------------------------------------------------
-# 自動建立缺少的資料表（Render 免費版沒有 shell，只能靠這招）
+# 自動建立資料表 & 初始化資料
 # -------------------------------------------------
 with app.app_context():
+    db.drop_all()
     db.create_all()
+
+    # 初始化管理員帳號
+    if not Admin.query.filter_by(username="admin").first():
+        admin = Admin(username="admin")
+        admin.set_password("admin")
+        db.session.add(admin)
+        print("✅ 管理員帳號 admin/admin 已建立")
+
+    # 初始化投票階段
+    if not VotePhase.query.first():
+        phases = [
+            VotePhase(id=1, name="家長委員", max_votes=6),
+            VotePhase(id=2, name="常務委員", max_votes=3),
+            VotePhase(id=3, name="家長會長", max_votes=1),
+        ]
+        db.session.add_all(phases)
+        print("✅ 投票階段已建立")
+
+    db.session.commit()
 
 # -------------------------------------------------
 # 載入並註冊 Blueprints
@@ -149,39 +169,6 @@ def show_phases():
 @app.route("/healthz")
 def healthz():
     return "OK", 200
-
-# -------------------------------------------------
-# CLI commands
-# -------------------------------------------------
-@app.cli.command("init-admin")
-def init_admin():
-    with app.app_context():
-        username = 'admin'
-        password = 'admin'
-        existing_admin = Admin.query.filter_by(username=username).first()
-        if existing_admin:
-            print(f'⚠️ 管理員帳號 "{username}" 已存在')
-        else:
-            admin = Admin(username=username)
-            admin.set_password(password)
-            db.session.add(admin)
-            db.session.commit()
-            print(f'✅ 管理員帳號 "{username}" 已成功建立（密碼：{password}）')
-
-@app.cli.command("init-vote-phases")
-def init_vote_phases_command():
-    with app.app_context():
-        VotePhase.query.delete()
-        phases = [
-            VotePhase(id=1, name='家長委員', max_votes=6),
-            VotePhase(id=2, name='常務委員', max_votes=3),
-            VotePhase(id=3, name='家長會長', max_votes=1)
-        ]
-        db.session.add_all(phases)
-        db.session.commit()
-        print("✅ 投票階段已重新初始化完成：")
-        for p in phases:
-            print(f" - ID: {p.id}, 階段名稱: {p.name}，可投票數: {p.max_votes}")
 
 # -------------------------------------------------
 # 自動記錄操作紀錄
