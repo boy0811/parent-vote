@@ -3,11 +3,13 @@ from models import db, Setting, VotePhase, Vote, Candidate
 import os
 import shutil
 import datetime
+from sqlalchemy import func
 
 admin_settings_bp = Blueprint('admin_settings', __name__)
 
-from sqlalchemy import func  # 若檔案頂端還沒有就補上
-
+# -------------------------------------------------
+# 系統設定頁
+# -------------------------------------------------
 @admin_settings_bp.route('/settings', methods=['GET', 'POST'], endpoint='admin_settings')
 def admin_settings():
     if 'admin' not in session:
@@ -15,28 +17,29 @@ def admin_settings():
 
     # 1️⃣ 取得現有設定
     refresh_setting       = Setting.query.filter_by(key='refresh_interval').first()
-    slide_setting         = Setting.query.filter_by(key='slide_interval').first()   # ← 新增
+    slide_setting         = Setting.query.filter_by(key='slide_interval').first()
     staff_title_setting   = Setting.query.filter_by(key='staff_vote_title').first()
     parent_title_setting  = Setting.query.filter_by(key='parent_vote_title').first()
     vote_title_setting    = Setting.query.filter_by(key='vote_title').first()
     current_phase_setting = Setting.query.filter_by(key='current_phase_id').first()
 
     refresh_value   = refresh_setting.value if refresh_setting else '10'
-    slide_interval  = slide_setting.value   if slide_setting   else '5'            # ← 新增
+    slide_interval  = slide_setting.value   if slide_setting   else '5'
     staff_vote_title  = staff_title_setting.value  if staff_title_setting  else '教職員投票'
     parent_vote_title = parent_title_setting.value if parent_title_setting else '家長投票'
     vote_title        = vote_title_setting.value   if vote_title_setting   else '第一階段：家長委員（最多 6 票）'
     current_phase_id  = current_phase_setting.value if current_phase_setting else ''
 
+    # ✅ 固定依 ID 排序
     phases = VotePhase.query.order_by(VotePhase.id).all()
 
     # 2️⃣ 處理表單提交
     if request.method == 'POST':
-        # ➔ 自動刷新秒數（票數刷新）
+        # ➔ 自動刷新秒數
         refresh_interval = (request.form.get('refresh_interval', '') or '').strip()
         save_setting('refresh_interval', refresh_interval or '10')
 
-        # ➔ 輪播間隔秒數（新增）
+        # ➔ 輪播間隔秒數
         slide_interval_form = (request.form.get('slide_interval', '') or '').strip()
         save_setting('slide_interval', slide_interval_form or '5')
 
@@ -75,7 +78,7 @@ def admin_settings():
 
     return render_template('admin_settings.html',
                            refresh_value=refresh_value,
-                           slide_interval=slide_interval,              # ← 傳到模板
+                           slide_interval=slide_interval,
                            staff_vote_title=staff_vote_title,
                            parent_vote_title=parent_vote_title,
                            vote_title=vote_title,
@@ -83,7 +86,9 @@ def admin_settings():
                            phases=phases,
                            all_phases=phases)
 
-# 🛠️ 通用儲存設定
+# -------------------------------------------------
+# 通用設定儲存
+# -------------------------------------------------
 def save_setting(key, value):
     setting = Setting.query.filter_by(key=key).first()
     if setting:
@@ -93,7 +98,9 @@ def save_setting(key, value):
         db.session.add(setting)
     db.session.commit()
 
-# 🧹 清除指定階段資料
+# -------------------------------------------------
+# 清除指定階段資料
+# -------------------------------------------------
 @admin_settings_bp.route('/clear_phase_data', methods=['POST'], endpoint='clear_phase_data')
 def clear_phase_data():
     phase_id = request.form.get("phase_id", type=int)
@@ -108,17 +115,19 @@ def clear_phase_data():
         db.session.delete(c)
 
     db.session.commit()
-    flash(f"✅ 已成功清除階段 ID {phase_id} 的候選人（{candidate_count} 筆）與投票紀錄（{vote_deleted} 筆）", "success")
+    flash(f"✅ 已清除階段 ID {phase_id}：候選人 {candidate_count} 筆、投票紀錄 {vote_deleted} 筆", "success")
     return redirect(url_for('admin_settings.admin_settings'))
 
-# 🧹 一鍵清除所有資料
+# -------------------------------------------------
+# 一鍵清除所有資料
+# -------------------------------------------------
 @admin_settings_bp.route('/clear_all_data', methods=['POST'], endpoint='clear_all_data')
 def clear_all_data():
     from models import OperationLog, User, Admin
 
     confirm_text = request.form.get('confirm_delete', '').strip()
     if confirm_text != 'DELETE':
-        flash("⚠️ 驗證字串錯誤，未執行清空動作。", "warning")
+        flash("⚠️ 驗證字串錯誤，未執行清空動作", "warning")
         return redirect(url_for('admin_settings.admin_settings'))
 
     # 🔹 清空主要表
@@ -151,13 +160,20 @@ def clear_all_data():
 
     return redirect(url_for('admin_settings.admin_settings'))
 
-# ✅ 備份資料庫功能
-
+# -------------------------------------------------
+# 備份資料庫（僅 SQLite 可用）
+# -------------------------------------------------
 @admin_settings_bp.route('/backup_db', methods=['POST'], endpoint='backup_db')
 def backup_db():
     if 'admin' not in session:
         return redirect(url_for('admin_auth.admin_login'))
 
+    # 🔹 檢查是否為雲端 DB（PostgreSQL）
+    if db.engine.url.drivername.startswith("postgresql"):
+        flash("⚠️ 雲端 PostgreSQL 不支援本地備份，請使用匯出功能。", "warning")
+        return redirect(url_for('admin_settings.admin_settings'))
+
+    # 🔹 SQLite 備份
     if not os.path.exists("backup"):
         os.makedirs("backup")
 
