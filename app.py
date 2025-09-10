@@ -199,7 +199,10 @@ def auto_log_post_requests():
         return
     user_type, user_id = get_request_user(session)
     action = zh_action_from_request(request)
-    add_log(user_type, user_id, action)
+    try:
+        add_log(user_type, user_id, action)
+    except Exception as e:
+        app.logger.warning(f"⚠️ 無法寫入操作紀錄: {e}")
 
 @app.route('/admin')
 def admin_redirect():
