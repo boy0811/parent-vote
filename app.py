@@ -120,6 +120,35 @@ app.register_blueprint(checkin_panel_bp)
 app.register_blueprint(admin_users_bp, url_prefix='/admin')
 
 # -------------------------------------------------
+# 啟動時自動建立 admin / 投票階段
+# -------------------------------------------------
+with app.app_context():
+    db.create_all()
+
+    # 確保管理員帳號存在
+    if not Admin.query.filter_by(username="admin").first():
+        admin = Admin(username="admin")
+        admin.set_password("admin")
+        db.session.add(admin)
+        db.session.commit()
+        print("✅ 已自動建立管理員：admin / admin")
+    else:
+        print("ℹ️ 管理員已存在，略過建立")
+
+    # 確保投票階段存在
+    if VotePhase.query.count() == 0:
+        phases = [
+            VotePhase(id=1, name='家長委員', max_votes=6),
+            VotePhase(id=2, name='常務委員', max_votes=3),
+            VotePhase(id=3, name='家長會長', max_votes=1)
+        ]
+        db.session.add_all(phases)
+        db.session.commit()
+        print("✅ 已自動建立投票階段")
+    else:
+        print("ℹ️ 投票階段已存在，略過建立")
+
+# -------------------------------------------------
 # Routes
 # -------------------------------------------------
 @app.route('/')
@@ -143,41 +172,6 @@ def show_phases():
 @app.route("/healthz")
 def healthz():
     return "OK", 200
-
-# -------------------------------------------------
-# CLI commands
-# -------------------------------------------------
-@app.cli.command("init-admin")
-def init_admin():
-    """建立預設管理員帳號"""
-    with app.app_context():
-        username = 'admin'
-        password = 'admin'
-        existing_admin = Admin.query.filter_by(username=username).first()
-        if existing_admin:
-            print(f'⚠️ 管理員帳號 "{username}" 已存在')
-        else:
-            admin = Admin(username=username)
-            admin.set_password(password)
-            db.session.add(admin)
-            db.session.commit()
-            print(f'✅ 管理員帳號 "{username}" 已成功建立（密碼：{password}）')
-
-@app.cli.command("init-vote-phases")
-def init_vote_phases_command():
-    """初始化投票階段"""
-    with app.app_context():
-        if VotePhase.query.count() > 0:
-            print("⚠️ 已存在投票階段，不重複建立")
-            return
-        phases = [
-            VotePhase(id=1, name='家長委員', max_votes=6),
-            VotePhase(id=2, name='常務委員', max_votes=3),
-            VotePhase(id=3, name='家長會長', max_votes=1)
-        ]
-        db.session.add_all(phases)
-        db.session.commit()
-        print("✅ 投票階段已初始化完成")
 
 # -------------------------------------------------
 # 自動記錄操作紀錄
