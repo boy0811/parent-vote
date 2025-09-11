@@ -42,16 +42,21 @@ def admin_logout():
 @admin_auth_bp.route('/change_password', methods=['GET', 'POST'])
 def change_password():
     # 確保已登入
-    if 'admin_id' not in session:
+    admin_id = session.get('admin_id')
+    if not admin_id:
         flash("請先登入管理員帳號", "warning")
         return redirect(url_for('admin_auth.admin_login'))
 
-    admin = Admin.query.get(session['admin_id'])
+    admin = Admin.query.get(admin_id)
+    if not admin:
+        flash("找不到管理員帳號，請重新登入", "danger")
+        session.clear()
+        return redirect(url_for('admin_auth.admin_login'))
 
     if request.method == 'POST':
-        current_password = request.form.get('current_password')
-        new_password = request.form.get('new_password')
-        confirm_password = request.form.get('confirm_password')
+        current_password = request.form.get('current_password', '').strip()
+        new_password = request.form.get('new_password', '').strip()
+        confirm_password = request.form.get('confirm_password', '').strip()
 
         # 檢查舊密碼
         if not admin.check_password(current_password):
@@ -66,7 +71,8 @@ def change_password():
         # 更新密碼
         admin.set_password(new_password)
         db.session.commit()
-        flash("密碼已成功更新！", "success")
+        add_log("admin", admin.id, "管理員修改密碼")
+        flash("✅ 密碼已成功更新！", "success")
         return redirect(url_for('admin_dashboard.admin_dashboard'))
 
     return render_template('admin_change_password.html')
