@@ -47,7 +47,7 @@
         <h5 class="mb-3">⚙️ 系統設定 / 登出</h5>
         <a href="{{ url_for('admin_settings.admin_settings') }}" class="btn btn-outline-dark w-100 mb-2">系統設定</a>
         <a href="{{ url_for('admin_logs.view_logs') }}" class="btn btn-outline-dark w-100 mb-2">操作紀錄</a>
-        <a href="{{ url_for('admin_users.change_password') }}" class="btn btn-outline-dark w-100 mb-2">修改管理員密碼</a>
+        <a href="{{ url_for('admin_auth.change_password') }}" class="btn btn-outline-dark w-100 mb-2">修改管理員密碼</a>
         <a href="{{ url_for('admin_auth.admin_logout') }}" class="btn btn-danger w-100">登出</a>
       </div>
     </div>
