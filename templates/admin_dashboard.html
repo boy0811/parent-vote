@@ -24,7 +24,7 @@
     <div class="col-md-6">
       <div class="card shadow p-4 h-100 rounded-4" style="background-color:#fffaf0;">
         <h5 class="mb-3">📊 投票監控與票數處理</h5>
-        <a href="{{ url_for('admin_votes.live_votes') }}" class="btn btn-outline-info w-100 mb-2">即時監票</a>
+        <a href="{{ url_for('admin_votes.api_live_votes') }}" class="btn btn-outline-info w-100 mb-2">即時監票</a>
         <a href="{{ url_for('admin_votes.rankings') }}" class="btn btn-outline-warning w-100 mb-2">得票排名</a>
         <a href="{{ url_for('admin_promote.promote_candidates') }}" class="btn btn-outline-success w-100 mb-2">候選人晉級處理</a>
         <a href="{{ url_for('admin_dashboard.vote_phases') }}" class="btn btn-outline-secondary w-100">投票階段管理</a>
