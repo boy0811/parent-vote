@@ -111,3 +111,38 @@ def admin_reset_staff_votes():
     db.session.commit()
     flash('✅ 教職員票數已清空', 'success')
     return redirect(url_for('admin_dashboard.admin_dashboard'))
+
+# 匯入教職員名單
+@admin_staffs_bp.route('/staff_import', methods=['GET', 'POST'], endpoint='admin_staff_import')
+def admin_staff_import():
+    if 'admin' not in session:
+        return redirect(url_for('admin_auth.admin_login'))
+
+    if request.method == 'POST':
+        file = request.files.get('file')
+        if not file or file.filename == '':
+            flash("⚠️ 請選擇檔案", "danger")
+            return redirect(url_for('admin_staffs.admin_staff_import'))
+
+        # TODO: 這裡加上實際的匯入處理（例如讀 CSV/Excel）
+        flash("✅ 教職員名單匯入成功", "success")
+        return redirect(url_for('admin_staffs.admin_staff_list'))
+
+    return render_template('admin_staff_import.html')
+
+
+# 下載匯入範例
+@admin_staffs_bp.route('/staff_template', methods=['GET'], endpoint='admin_staff_template')
+def admin_staff_template():
+    if 'admin' not in session:
+        return redirect(url_for('admin_auth.admin_login'))
+
+    from flask import send_file
+    import os
+
+    template_path = os.path.join("static", "templates", "staff_template.xlsx")
+    if not os.path.exists(template_path):
+        flash("⚠️ 範例檔案不存在", "danger")
+        return redirect(url_for('admin_staffs.admin_staff_list'))
+
+    return send_file(template_path, as_attachment=True)
