@@ -16,7 +16,7 @@
 
   <!-- 表格 -->
   <form method="POST" action="{{ url_for('admin_candidates.admin_delete_candidates') }}" 
-        onsubmit="return confirm('確定要刪除選中的候選人及其票數嗎？');">
+        onsubmit="return confirm('⚠️ 確定要刪除選中的候選人嗎？\n此操作將連同票數一併刪除，無法復原！');">
     <div class="table-responsive shadow-sm rounded-3 mx-auto" style="max-width: 900px;">
       <table class="table table-hover align-middle text-center mb-0">
         <thead class="table-dark">
@@ -25,6 +25,7 @@
             <th style="width:60px;">序號</th>
             <th>班級</th>
             <th>家長姓名</th>
+            <th>帳號</th>
             <th style="width:160px;">操作</th>
           </tr>
         </thead>
@@ -37,8 +38,13 @@
               <td>{{ c.parent_name }}</td>
               <td>{{ c.username }}</td>
               <td>
-                <a href="{{ url_for('admin_candidates.admin_edit_candidate', candidate_id=c.id) }}" class="btn btn-sm btn-outline-secondary rounded-pill px-3">✏️ 編輯</a>
-                <a href="{{ url_for('admin_candidates.admin_delete_candidate', candidate_id=c.id) }}" class="btn btn-sm btn-outline-danger rounded-pill px-3">🗑️ 刪除</a>
+                <a href="{{ url_for('admin_candidates.admin_edit_candidate', candidate_id=c.id) }}" 
+                   class="btn btn-sm btn-outline-secondary rounded-pill px-3">✏️ 編輯</a>
+                <a href="{{ url_for('admin_candidates.admin_delete_candidate', candidate_id=c.id) }}" 
+                   class="btn btn-sm btn-outline-danger rounded-pill px-3"
+                   onclick="return confirm('⚠️ 確定要刪除此候選人（帳號：{{ c.username }}）嗎？\n此操作將刪除其票數，無法復原！');">
+                   🗑️ 刪除
+                </a>
               </td>
             </tr>
           {% else %}
