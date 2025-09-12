@@ -170,11 +170,13 @@ def vote():
         flash("⚠️ 目前尚未開啟投票階段", "warning")
         return redirect(url_for('auth.login'))
 
-    # 🔹 強制簽到檢查（第 2、3 階段）
-    if current_phase.id in [2, 3]:
-        user = User.query.get(user_id)
-        if not user or not user.is_signed_in:
-            flash("⚠️ 請先簽到再投票", "warning")
+    # 🔹 強制簽到檢查（第二、第三階段必須簽到）
+    first_phase_id = get_first_phase_id()
+    if first_phase_id and current_phase.id > first_phase_id:
+        candidate_id = session.get('voter_candidate_id')
+        candidate = Candidate.query.get(candidate_id) if candidate_id else None
+        if not candidate or not candidate.is_signed_in:
+            flash("⚠️ 本階段必須先簽到才能投票", "warning")
             return redirect(url_for('auth.checkin'))
 
     vote_title = get_setting("vote_title", default="家長投票", use_cache=False)
@@ -222,6 +224,7 @@ def vote():
         max_votes=max_votes,
         min_votes=min_votes
     )
+
 
 # ----------------------
 # ✅ 投票完成頁
