@@ -173,9 +173,8 @@ def vote():
     # 🔹 強制簽到檢查（第二、第三階段必須簽到）
     first_phase_id = get_first_phase_id()
     if first_phase_id and current_phase.id > first_phase_id:
-        candidate_id = session.get('voter_candidate_id')
-        candidate = Candidate.query.get(candidate_id) if candidate_id else None
-        if not candidate or not candidate.is_signed_in:
+        user = User.query.get(user_id)
+        if not user or not user.is_signed_in:
             flash("⚠️ 本階段必須先簽到才能投票", "warning")
             return redirect(url_for('auth.checkin'))
 
@@ -224,7 +223,6 @@ def vote():
         max_votes=max_votes,
         min_votes=min_votes
     )
-
 
 # ----------------------
 # ✅ 投票完成頁
